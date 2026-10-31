@@ -1,0 +1,2 @@
+# Deliberate dependency provisioning; no model/API calls occur on install.
+harbor @ git+https://github.com/harbor-framework/harbor.git@5eb713ff9500daced4e143b98765a7c732744a1b

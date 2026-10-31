@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "status": "BLOCKED",
+  "live_agent_runs": 0,
+  "comparison_conclusion": null,
+  "blockers": [
+    "docker: executable not installed",
+    "harbor: executable not installed",
+    "codex: executable not installed",
+    "Codex: saved ChatGPT authentication unavailable; no API fallback"
+  ],
+  "arms": [
+    {
+      "arm": "plain-codex",
+      "status": "NOT_STARTED",
+      "verified": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "agent_seconds": null
+    },
+    {
+      "arm": "pstack-adapted-single-worker",
+      "status": "NOT_STARTED",
+      "verified": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "agent_seconds": null
+    },
+    {
+      "arm": "cstack-harbor",
+      "status": "NOT_STARTED",
+      "verified": null,
+      "input_tokens": null,
+      "output_tokens": null,
+      "agent_seconds": null
+    }
+  ],
+  "checked_at": "2026-10-31T12:35:46.083238+00:00",
+  "checks": {
+    "git": true,
+    "node": true,
+    "docker": false,
+    "harbor": false,
+    "codex": false,
+    "saved_chatgpt_auth_present": false,
+    "node_version": "v22.16.0",
+    "api_credentials_forwarded": false
+  },
+  "package_registry_access": "DNS resolution failed",
+  "local_validation": {
+    "existing_cstack_tests": 60,
+    "benchmark_tests": 50,
+    "benchmark_repeat_tests": 50,
+    "live_runs": 0
+  }
+}

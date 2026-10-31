@@ -6,3 +6,9 @@ coverage/
 !.env.example
 .cstack/
 .DS_Store
+
+# Private benchmark artifacts, task answers, credentials and logs never belong in Git.
+.bench-work/
+.bench-venv/
+__pycache__/
+*.pyc
