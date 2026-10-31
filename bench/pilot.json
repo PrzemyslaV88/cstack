@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "purpose": "one-task integration smoke, not a performance leaderboard",
+  "task": "swe-bench/sympy__sympy-20590",
+  "task_ref": "latest",
+  "harbor_commit": "5eb713ff9500daced4e143b98765a7c732744a1b",
+  "harbor_version": "0.20.0",
+  "pstack_commit": "4dd1d05818d19792e7cd6e818f1667f95f7e1dbe",
+  "cstack_base_commit": "023125b373a4f20d96df5d7b85badba248794cbc",
+  "arms": ["plain-codex", "pstack-adapted-single-worker", "cstack-harbor"],
+  "reasoning": "medium",
+  "max_seconds_per_arm": 1800,
+  "repetitions": 1,
+  "seed": 20261031,
+  "authentication": "chatgpt-only",
+  "api_billing_fallback": false,
+  "model": null,
+  "codex_version": null,
+  "private_checks_visible_to_agents": false,
+  "notes": [
+    "Resolve latest once during prepare; scored runs require locked task and image digests.",
+    "Pstack adaptation is not official Cursor/Claude Code multiagent pstack.",
+    "Model, reasoning, CLI version, public information, network policy and deadline match.",
+    "An agent's claimed completion is not the Harbor verifier's verdict.",
+    "No allowance-saving or comparative-success claim follows from this smoke."
+  ]
+}

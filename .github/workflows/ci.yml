@@ -19,6 +19,11 @@ jobs:
           node-version: ${{ matrix.node }}
       # This is explicit CI setup, not an implicit runtime network/billing fallback.
       - run: docker pull "$CSTACK_TEST_IMAGE"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: npm run check
       - run: npm test
+      - run: python -m unittest discover -s bench -t . -p 'test_*.py' -v
+      - run: python -m py_compile bench/harbor_agents.py bench/lab.py bench/protocol.py
       # No API keys, live models, user credentials, pushes or deployments.

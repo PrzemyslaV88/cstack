@@ -79,3 +79,10 @@ npm run test:live                 # Explicit opt-in: uses one bounded REAL Codex
 CI uses Docker and Node 22/24, with no API keys or live model calls. Tests include the 13 audit regressions, real isolated subprocesses, a genuinely killed controller, CLI protocol fixtures, human approval and input-bundle lifecycles. A synthetic Codex executable is not a live authenticated model test. Live account integration, macOS Docker execution and savings versus ordinary Codex must be measured separately.
 
 Read [audit repair mapping](docs/AUDIT_REMEDIATION.md), [validation](docs/VALIDATION.md) and [evaluation protocol](docs/EVALUATION.md). The original architecture proposal remains in `docs/ARCHITECTURE.md` as a roadmap, not a list of shipped guarantees.
+
+## Independent benchmark pilot
+
+The [Harbor pilot](bench/README.md) compares matched Codex workflows using an existing
+SWE-bench task and a separate grader. It includes a clearly labelled single-worker
+pstack adaptation and the real cStack controller bridge. Live comparison remains
+blocked in the build environment; see [the execution record](docs/BENCHMARK_EXECUTION.md).
