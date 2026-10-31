@@ -1,14 +1,24 @@
 name: CI
-on:
-  push:
-  pull_request:
+on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node: ['22.16.0', '24']
+    env:
+      CSTACK_TEST_RUNNER: docker
+      CSTACK_TEST_IMAGE: node:22.16.0-bookworm-slim
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node }}
+      # This is explicit CI setup, not an implicit runtime network/billing fallback.
+      - run: docker pull "$CSTACK_TEST_IMAGE"
       - run: npm run check
       - run: npm test
+      # No API keys, live models, user credentials, pushes or deployments.

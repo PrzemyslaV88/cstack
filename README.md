@@ -1,61 +1,81 @@
-# cStack
+# cStack 0.2
 
-**Finish the requested implementation. Prove what works. Stop wasting agent turns.**
+**One coding worker. Observable outcomes. No self-awarded completion.**
 
-cStack is a local-first, budget-aware engineering harness for Codex. One coding agent by default; a deterministic controller owns acceptance contracts, verification evidence, bounded repair attempts and honest completion states.
+cStack is a local engineering controller around Codex. It reserves an attempt, sends a focused task and actual failure diagnostics, independently runs the candidate in isolation, and checks a frozen completion contract. A worker saying “done” is not proof.
 
-## Working capabilities (v0.1)
+This release repairs the v0.1 audit failures. It is still a hardening-stage tool, **not a proven substitute for human engineering review or a demonstrated way to increase a subscription allowance**. See [verification status](docs/VALIDATION.md) and [security boundaries](docs/SECURITY.md).
 
-- Creates a separate, detached Git worktree and refuses to overwrite a dirty source checkout.
-- Freezes a typed acceptance contract in state outside the agent worktree (SHA-256 integrity checked on reload).
-- Captures baseline test results; runs independent `argv`-based checks after each coding turn.
-- Detects documentation-only/no-op and tests-only implementations; prevents unsupported VERIFIED claims.
-- Tracks attempt-by-attempt evidence, SHA-256 worktree fingerprint, unchanged retries, usage events and blocking conditions.
-- Bounds Codex retries to two or three by default and never spawns parallel agents.
-- Stores SQLite indexes, JSONL events, evidence logs and a human-readable report in `~/.cstack`.
-- Supports `run`, `status`, `report`, `resume`, `doctor`, and an illustrative file-level import/code map.
-- Does **not** push, deploy, approve real-world tests or automatically switch to a paid API.
+## Start
 
-## Requirements
+Requirements: Node 22.13 or newer, Git, and a separately installed/authenticated Codex CLI with the controlled-configuration capabilities checked by `doctor`. The default verifier uses Docker. Linux user namespaces are an explicit alternative. Use WSL2 rather than native Windows.
 
-Node.js 22.13+, Git, and the [Codex CLI](https://learn.chatgpt.com/docs/cli/reference) installed and authenticated for real agent execution. No npm runtime dependencies.
-
-```bash
+```sh
 npm install -g .
+# Explicit provisioning, not something cStack silently performs:
+docker pull node:22.16.0-bookworm-slim
 cstack doctor
+cstack init "Fix the observable behavior" --out ../my-contract.json
+# Edit the draft: define actual checks, then set draft=false.
+cstack validate --contract ../my-contract.json
+cstack run --repo /absolute/project --contract ../my-contract.json
 ```
 
-Create `contract.json` **outside** the worker worktree:
+The goal is not to make you write a huge specification. A small external probe with several meaningful input/output cases is a better starting point than ten vague requirements. [Example contract](examples/calculator-contract.json) and [contract guide](docs/CONTRACT.md) explain the fields.
 
-```json
-{
-  "type":"FIX",
-  "goal":"Fix the broken addition function",
-  "policy":"lean",
-  "criteria":[
-    {"id":"AC1","text":"Adding 4 and 2 produces 6","kind":"command","argv":["node","--test","test/add.test.mjs"]}
-  ]
-}
+On compatible Linux hosts, choose `"runner":{"backend":"linux"}` and run `cstack doctor --runner linux`. A failed isolation check stops the run; there is no unsandboxed fallback.
+
+## What is enforced
+
+- **External observation:** probe expectations are compared by the controller, outside the candidate process. Early exits, missing output and invented “PASS” messages do not satisfy a probe. Node test reports must include the declared cases; test reports alone require human outcome acceptance.
+- **Snapshot identity:** evidence records source/HEAD, normalized artifact, contract, verifier and runner identities. Ignored inputs, file modes, commits and changed dependencies invalidate proof. Verification uses a read-only copy, not the mutable worktree.
+- **Execution separation:** verification receives no host credentials, controller-state mount or outbound network. Docker also has resource/capability limits. The Linux runner uses fresh namespaces, a restricted root filesystem and dropped capabilities.
+- **Durable accounting:** SQLite is authoritative. State and events commit together; attempts are reserved before launching work. Errors, quotas and crashes consume a reservation. Resuming never silently adds budget.
+- **Outcome-based tasks:** already-satisfied dependent tasks do not require cosmetic edits. Configuration, templates and other declared artifacts can be genuine implementation.
+- **Honest pauses:** blocked work can resume, and manual approvals are tied to one candidate. Protected test/config changes require human review. A failed automated check cannot be manually changed to PASS.
+
+## Inspect, resume, approve and hand off
+
+```sh
+cstack status RUN_ID
+cstack evidence RUN_ID --criterion AC1
+cstack report RUN_ID
+cstack resume RUN_ID
+# Only after personally completing the specified manual check:
+cstack approve RUN_ID --criterion UI --snapshot HASH_FROM_STATUS --note "What I exercised and observed"
+cstack resume RUN_ID
+cstack export RUN_ID --out /new/handoff-directory
 ```
 
-```bash
-cstack run "Fix the broken addition function" --repo /path/to/project --contract /path/to/contract.json
-cstack status <run-id>
-cstack report <run-id>
-cstack resume <run-id>
+`export` supplies the verified candidate, manifest and report. It never overwrites an existing directory and does not apply, commit, push, merge or deploy the change. The original repository checkout is left untouched. Keep your normal review and delivery process.
+
+Controller state lives under `~/.cstack` (override with `CSTACK_HOME`, outside the target repository). The v0.2 database is `state-v2.db`. Old v0.1 state is preserved but its evidence is not silently upgraded; start a reviewed v0.2 run. JSON and JSONL files are regenerable exports, not editable authorities.
+
+## Dependencies without hidden installation
+
+A fresh Git worktree does not contain ignored dependencies. cStack never runs a networked `npm install` or an arbitrary lifecycle hook on your host. You can explicitly supply a reviewed, prebuilt dependency bundle with a pinned digest:
+
+```sh
+cstack input-digest /absolute/prepared/node_modules
 ```
 
-**IMPORTANT:** a `VERIFIED` result only means the configured checks passed against the changed worktree, not that every real-world behaviour was proven. A manual required check produces `NEEDS_MANUAL_VERIFICATION`, never false success. cStack leaves changes in its isolated worktree, not your original checkout.
+Add it as `workspace_inputs` in the contract. Its files are copied before the baseline and included in every candidate identity. External symlinks and likely secret files are rejected. Larger/build-specific environments should use a reviewed Docker image. Automatic networked dependency provisioning, browser/device adapters and production deployment are not implemented.
 
-## Design boundaries
+## Budget, authentication and limits
 
-See [contract schema](docs/CONTRACT.md) and [architecture proposal](docs/ARCHITECTURE.md). The first version is intentionally smaller than the proposal. There is **no** semantic symbol graph, automatic requirements-generation model, GUI, approval UI, Playwright integration or independent malicious-worker OS sandbox in v0.1. These need further engineering and acceptance tests before they can be claimed.
+ChatGPT authentication is required. cStack checks the installed CLI capabilities, forces `forced_login_method="chatgpt"`, disables subagents/hooks/plugins/apps/goals, and does not forward API-key environment variables. No API billing fallback exists. The coding worker still relies on Codex's own sandbox and installed CLI: this is not a new VM boundary around Codex itself.
 
-## Development
+Attempts, cumulative active time, worker wall time and observed tokens have explicit ceilings. Token usage can arrive only at turn completion; therefore the token ceiling is an **admission limit**, not a guarantee against a turn overshooting it. Input/cached/output/reasoning counters are reported separately. Remaining subscription allowance is **unknown**, not inferred from token counts.
 
-```bash
-npm test
+## Verification
+
+```sh
 npm run check
+npm test                         # Linux namespace fixtures on Linux
+CSTACK_TEST_RUNNER=docker npm test # Docker engine/image must already be available
+npm run test:live                 # Explicit opt-in: uses one bounded REAL Codex invocation
 ```
 
-Runs are indexed in `~/.cstack/state.db`; evidence logs, status JSON and reports are under `~/.cstack/runs/<run-id>/`. Protect this directory and use trusted contract files: verifier `argv` commands run on your machine.
+CI uses Docker and Node 22/24, with no API keys or live model calls. Tests include the 13 audit regressions, real isolated subprocesses, a genuinely killed controller, CLI protocol fixtures, human approval and input-bundle lifecycles. A synthetic Codex executable is not a live authenticated model test. Live account integration, macOS Docker execution and savings versus ordinary Codex must be measured separately.
+
+Read [audit repair mapping](docs/AUDIT_REMEDIATION.md), [validation](docs/VALIDATION.md) and [evaluation protocol](docs/EVALUATION.md). The original architecture proposal remains in `docs/ARCHITECTURE.md` as a roadmap, not a list of shipped guarantees.

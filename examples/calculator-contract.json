@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "type": "FIX",
+  "goal": "Repair incorrect calculator addition",
+  "policy": "lean",
+  "runner": {"backend": "docker", "image": "node:22.16.0-bookworm-slim"},
+  "attempt_limit": 2,
+  "budget": {"max_attempts": 2, "max_active_ms": 600000, "worker_timeout_ms": 180000, "max_observed_tokens": 100000},
+  "implementation_paths": ["calc.mjs", "settings.json"],
+  "criteria": [{
+    "id": "AC1",
+    "text": "Addition returns the correct result for positive and mixed-sign inputs",
+    "kind": "probe",
+    "argv": ["node", "--input-type=module", "-e", "import {readFileSync} from 'node:fs';import {add} from './calc.mjs';const a=JSON.parse(readFileSync(0,'utf8'));console.log(JSON.stringify(add(...a)))"],
+    "cases": [{"stdin": "[4,2]", "expect_json": 6}, {"stdin": "[-5,3]", "expect_json": -2}]
+  }]
+}

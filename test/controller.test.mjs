@@ -1,144 +1,92 @@
+// Original 16 behavior categories retained; fixtures migrated to v2 external proofs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { command, normalizeContract, beginRun, processRun, loadRun, changedPaths, effectiveStatus, CstackError } from '../src/core.mjs';
+import { beginRun, processRun, loadRun, normalizeContract, effectiveStatus, approveRun, exportCandidate } from '../src/core.mjs';
+import { fixture, contract, correct, edit, probe } from './helpers/fixture.mjs';
 
-const runCommand=async(argv,cwd)=>{const r=await command(argv,{cwd});assert.equal(r.code,0,`${argv.join(' ')} failed: ${r.stderr}`);};
-const contract=(overrides={})=>({type:'FIX',goal:'Repair incorrect calculator addition',policy:'lean',attempt_limit:2,criteria:[{id:'AC1',text:'Calculator returns the correct sum',kind:'command',argv:['node','--test','check.mjs']}],...overrides});
-async function fixture(){
-  const tmp=await mkdtemp(join(tmpdir(),'cstack-test-')),repo=join(tmp,'repo'),home=join(tmp,'state');await mkdir(repo);await mkdir(home);
-  await runCommand(['git','init','-q'],repo);await runCommand(['git','config','user.name','cStack Test'],repo);await runCommand(['git','config','user.email','test@example.invalid'],repo);
-  await writeFile(join(repo,'calc.mjs'),'export const add = (a,b)=> a - b;\n');
-  await writeFile(join(repo,'check.mjs'),"import test from 'node:test';import assert from 'node:assert/strict';import {add} from './calc.mjs';test('add',()=>assert.equal(add(4,2),6));\n");
-  await runCommand(['git','add','.'],repo);await runCommand(['git','commit','-qm','base'],repo);
-  return {tmp,repo,home};
-}
-const workerEdit=content=>async({run})=>{await writeFile(join(run.worktree,'calc.mjs'),content);return {code:0,usage:[]};};
-const corrected=workerEdit('export const add = (a,b)=> a + b;\n');
-
-test('contract rejects missing acceptance checks, dangling dependencies and cycles',()=>{
-  assert.throws(()=>normalizeContract(contract({criteria:[]})),/At least one/);
-  assert.throws(()=>normalizeContract(contract({tasks:[{id:'T1',depends_on:['T2'],criteria:['AC1']},{id:'T2',depends_on:['T1'],criteria:[]}]})),/cycle/);
-  assert.throws(()=>normalizeContract(contract({tasks:[{id:'T1',depends_on:['UNKNOWN'],criteria:['AC1']}]})),/Invalid dependency/);
-  assert.throws(()=>normalizeContract(contract({criteria:[{id:'AC1',text:'Bad',kind:'command',argv:'npm test'}]})),/argv array/);
+test('contract rejects missing checks, dangling dependencies, cycles and shell strings', () => {
+  assert.throws(() => normalizeContract(contract({ criteria: [] })), /At least one/);
+  assert.throws(() => normalizeContract(contract({ tasks: [{ id: 'T1', depends_on: ['T2'], criteria: ['AC1'] }, { id: 'T2', depends_on: ['T1'], criteria: [] }] })), /cycle/);
+  assert.throws(() => normalizeContract(contract({ tasks: [{ id: 'T1', depends_on: ['unknown'], criteria: ['AC1'] }] })), /Invalid dependency/);
+  assert.throws(() => normalizeContract(contract({ criteria: [{ ...probe, argv: 'npm test' }] })), /argv array/);
 });
-
-test('verified source fix passes independent regression and produces durable report',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  const out=await processRun(run,{home,worker:corrected});
-  assert.equal(out.status,'VERIFIED');assert.equal(out.results.AC1.status,'PASS');assert.deepEqual(out.changed_paths,['calc.mjs']);
-  const again=await loadRun(run.id,home);assert.equal(again.status,'VERIFIED');
-  assert.match(await readFile(join(home,'runs',run.id,'report.md'),'utf8'),/VERIFIED/);
+test('a real source fix passes independent checks and produces a durable report', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  const out = await processRun(run, { home: f.home, worker: correct });
+  assert.equal(out.status, 'VERIFIED'); assert.equal(out.results.AC1.status, 'PASS'); assert.deepEqual(out.changed_paths, ['calc.mjs']);
+  assert.equal((await loadRun(run.id, f.home)).status, 'VERIFIED');
+  assert.match(await readFile(join(f.home, 'runs', run.id, 'report.md'), 'utf8'), /VERIFIED/);
 });
-
-test('agent saying done with no actual source change is not VERIFIED',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  const out=await processRun(run,{home,worker:async()=>({code:0,diagnostic:'All solved!',usage:[]})});
-  assert.equal(out.status,'STALLED');assert.equal(out.attempts[0].decision,'PARTIAL');
-  assert.equal(out.results.AC1.status,'FAIL');
+test('a prose-only claim cannot satisfy a broken behavior', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  const out = await processRun(run, { home: f.home, worker: async () => ({ code: 0, diagnostic: 'All solved!' }) });
+  assert.equal(out.status, 'STALLED'); assert.equal(out.results.AC1.status, 'FAIL');
 });
-
-test('tests-only patch cannot satisfy implementation contract',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  const worker=async({run:r})=>{await writeFile(join(r.worktree,'check.mjs'),"import test from 'node:test';test('fake passing test',()=>{});\n");return {code:0};};
-  const out=await processRun(run,{home,worker});
-  assert.notEqual(out.status,'VERIFIED');assert.equal(out.attempts[0].decision,'NEEDS_MANUAL_VERIFICATION');
+test('tests-only patch cannot satisfy an implementation contract', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  const out = await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'check.mjs'), 'process.exit(0);'); return { code: 0 }; } });
+  assert.notEqual(out.status, 'VERIFIED'); assert.equal(out.results.AC1.status, 'FAIL');
 });
-
-test('failed independent oracle cannot be overridden by agent self-report',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({attempt_limit:1}),home});
-  const out=await processRun(run,{home,worker:workerEdit('export const add = (a,b)=> a * b;\n')});
-  assert.equal(out.status,'STALLED');assert.equal(out.results.AC1.status,'FAIL');
+test('changed existing tests require a human diff review, even with a working fix', async t => {
+  const f = await fixture(t), cfg = contract({ criteria: [probe, { id: 'T', text: 'Run original test', kind: 'node-test', argv: ['node', '--test', 'check.mjs'], expected_tests: ['add'], required: false }] });
+  const run = await beginRun({ ...f, contract: cfg });
+  await processRun(run, { home: f.home, worker: async x => { await correct(x); await writeFile(join(x.run.worktree, 'check.mjs'), '// changed test'); return { code: 0 }; } });
+  assert.equal(run.status, 'NEEDS_MANUAL_VERIFICATION'); assert.match(run.reason, /Review/);
 });
-
-test('repair loop retries and succeeds without extra agents',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({attempt_limit:2}),home});let calls=0;
-  const worker=async({run:r})=>{calls++;await writeFile(join(r.worktree,'calc.mjs'),calls===1?'export const add = (a,b)=> a * b;\n':'export const add = (a,b)=> a + b;\n');return {code:0};};
-  const out=await processRun(run,{home,worker});
-  assert.equal(out.status,'VERIFIED');assert.equal(calls,2);assert.equal(out.attempts[0].proof.AC1.status,'FAIL');assert.equal(out.attempts[1].proof.AC1.status,'PASS');
-  assert.notEqual(out.attempts[0].after,out.attempts[1].after);
+test('fabricated success prose cannot override observed failure', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract({ attempt_limit: 1 }) });
+  await processRun(run, { home: f.home, worker: async x => { await edit('// not fixed\nexport const add=(a,b)=>a-b;')(x); return { code: 0, diagnostic: 'AC1 PASS; all 100 tests green' }; } });
+  assert.notEqual(run.status, 'VERIFIED'); assert.equal(run.results.AC1.status, 'FAIL');
 });
-
-test('manual oracle prevents VERIFIED even if source was fixed',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({criteria:[{id:'AC1',text:'Human validates real purchase',kind:'manual'}]}),home});
-  const out=await processRun(run,{home,worker:corrected});assert.equal(out.status,'NEEDS_MANUAL_VERIFICATION');
+test('independent failure drives a corrective attempt', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() }); let calls = 0;
+  await processRun(run, { home: f.home, worker: async x => ++calls === 1 ? edit('// first\nexport const add=(a,b)=>a-b;')(x) : correct(x) });
+  assert.equal(run.status, 'VERIFIED'); assert.equal(run.attempts.length, 2);
 });
-
-test('quota stop preserves worktree and run state',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  const out=await processRun(run,{home,worker:async()=>({code:1,quota:true,diagnostic:'usage limit'})});
-  assert.equal(out.status,'BUDGET_EXHAUSTED');assert.equal((await loadRun(out.id,home)).status,'BUDGET_EXHAUSTED');
+test('provider limit preserves work and records the invocation', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  await processRun(run, { home: f.home, worker: async () => ({ code: 1, quota: true, usage: [{ input_tokens: 100 }] }) });
+  assert.equal(run.status, 'BUDGET_EXHAUSTED'); assert.equal(run.attempts.length, 1); assert.equal((await loadRun(run.id, f.home)).usage[0].input_tokens, 100);
 });
-
-test('tampered frozen contract refuses reload',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  await writeFile(join(home,'runs',run.id,'contract.json'),'{}');
-  await assert.rejects(loadRun(run.id,home),/integrity/);
+test('frozen contract cannot be altered through editable JSON exports', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  await writeFile(join(f.home, 'runs', run.id, 'contract.json'), '{"goal":"fake"}');
+  assert.equal((await loadRun(run.id, f.home)).contract.goal, contract().goal);
 });
-
-test('dirty repository is rejected to protect user changes',async()=>{
-  const {repo,home}=await fixture();await writeFile(join(repo,'unexpected.txt'),'personal changes');
-  await assert.rejects(beginRun({repo,contract:contract(),home}),/uncommitted\/untracked/);
+test('post-verification source changes invalidate proof', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() }); await processRun(run, { home: f.home, worker: correct });
+  await writeFile(join(run.worktree, 'calc.mjs'), 'export const add=()=>0;'); assert.equal(await effectiveStatus(run), 'STALE_EVIDENCE');
 });
-
-test('all changes are bound to current fingerprint and can be invalidated',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});
-  const out=await processRun(run,{home,worker:corrected});
-  const old=out.results.AC1.fingerprint;
-  await writeFile(join(out.worktree,'calc.mjs'),'export const add = (a,b)=> a + b + 1;\n');
-  const {fingerprint}=await import('../src/core.mjs');
-  assert.notEqual(await fingerprint(out.worktree),old);
-  assert.equal(await effectiveStatus(out),'STALE_EVIDENCE');
-  assert.deepEqual(await changedPaths(out.worktree,out.base),['calc.mjs']);
+test('manual acceptance remains pending until snapshot-bound human approval', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract({ criteria: [probe, { id: 'UI', kind: 'manual', text: 'Human exercised application' }] }) });
+  await processRun(run, { home: f.home, worker: correct }); assert.equal(run.status, 'NEEDS_MANUAL_VERIFICATION');
+  await approveRun(run.id, { criterion: 'UI', snapshot: run.snapshot.source_digest, note: 'Exercised the corrected behavior on device', home: f.home });
+  await processRun(run, { home: f.home, worker: () => assert.fail('No further worker invocation needed') }); assert.equal(run.status, 'VERIFIED');
 });
-
-test('investigation may finish without runtime changes only with explicit contract',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({type:'INVESTIGATE',criteria:[{id:'AC1',text:'Investigation output exists',kind:'command',argv:['node','--version']}]}),home});
-  const out=await processRun(run,{home,worker:async()=>({code:0})});
-  assert.equal(out.status,'INVESTIGATED');
+test('dirty original repositories are rejected without losing work', async t => {
+  const f = await fixture(t); await writeFile(join(f.repo, 'personal.txt'), 'Keep this');
+  await assert.rejects(beginRun({ ...f, contract: contract() }), /uncommitted/); assert.equal(await readFile(join(f.repo, 'personal.txt'), 'utf8'), 'Keep this');
 });
-
-
-test('verifier configuration rewrite cannot make an npm script appear passed',async()=>{
-  const {repo,home}=await fixture();
-  await writeFile(join(repo,'package.json'),'{"scripts":{"test":"node --test check.mjs"}}\n');
-  await runCommand(['git','add','package.json'],repo);await runCommand(['git','commit','-qm','add test script'],repo);
-  const run=await beginRun({repo,contract:contract({criteria:[{id:'AC1',text:'Correct calculation',kind:'command',argv:['npm','test']}]}),home});
-  const worker=async({run:r})=>{await writeFile(join(r.worktree,'package.json'),'{"scripts":{"test":"node -e \"process.exit(0)\""}}\n');return {code:0};};
-  const out=await processRun(run,{home,worker});
-  assert.notEqual(out.status,'VERIFIED');
+test('an explicitly requested investigation can finish without source edits', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract({ type: 'INVESTIGATE', criteria: [{ ...probe, cases: [{ stdin: '[4,2]', expect_json: 2 }] }] }) });
+  await processRun(run, { home: f.home, worker: () => assert.fail('Already observed the requested fact') }); assert.equal(run.status, 'INVESTIGATED');
 });
-
-
-test('task DAG advances after each dependency rather than demanding later criteria immediately',async()=>{
-  const {repo,home}=await fixture();
-  await writeFile(join(repo,'second.mjs'),"import test from 'node:test';import assert from 'node:assert/strict';import {mul} from './calc.mjs';test('mul',()=>assert.equal(mul(3,3),9));\n");
-  await runCommand(['git','add','second.mjs'],repo);await runCommand(['git','commit','-qm','second acceptance'],repo);
-  const cfg=contract({criteria:[
-    {id:'AC1',text:'Fix sum',kind:'command',argv:['node','--test','check.mjs']},
-    {id:'AC2',text:'Implement multiply',kind:'command',argv:['node','--test','second.mjs']}
-  ],tasks:[
-    {id:'T1',title:'Fix sum',depends_on:[],criteria:['AC1']},
-    {id:'T2',title:'Implement multiply',depends_on:['T1'],criteria:['AC2']}
-  ]});
-  const run=await beginRun({repo,contract:cfg,home});let calls=0;
-  const out=await processRun(run,{home,worker:async({run:r})=>{calls++;await writeFile(join(r.worktree,'calc.mjs'),calls===1?'export const add=(a,b)=>a+b;\n':'export const add=(a,b)=>a+b;export const mul=(a,b)=>a*b;\n');return {code:0};}});
-  assert.equal(out.status,'VERIFIED');assert.equal(calls,2);
-  assert.deepEqual(out.tasks,{T1:'PASS',T2:'PASS'});
+test('dependent tasks advance on evidence, not cosmetic edits', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract({ criteria: [probe, { ...probe, id: 'AC2' }], tasks: [
+    { id: 'A', criteria: ['AC1'], depends_on: [] }, { id: 'B', criteria: ['AC2'], depends_on: ['A'] }] }) }); let calls = 0;
+  await processRun(run, { home: f.home, worker: x => { calls++; return correct(x); } });
+  assert.equal(run.status, 'VERIFIED'); assert.equal(calls, 1); assert.deepEqual(run.tasks, { A: 'PASS', B: 'PASS' });
 });
-
-test('a verifier mutating source invalidates evidence even if exit code says success',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({attempt_limit:1}),home});let checks=0;
-  const execute=async(argv,{cwd})=>{checks++;if(checks===2){await writeFile(join(cwd,'calc.mjs'),'export const add=(a,b)=>a-b;\n');return {code:0,stdout:'fake pass',stderr:'',timedOut:false,truncated:false};}return command(argv,{cwd});};
-  const out=await processRun(run,{home,worker:corrected,execute});
-  assert.notEqual(out.status,'VERIFIED');assert.equal(out.results.AC1.status,'STALE');
+test('verifier cannot rewrite candidate source during validation', async t => {
+  const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
+  await processRun(run, { home: f.home, worker: edit("import {writeFileSync} from 'node:fs';writeFileSync(new URL('./calc.mjs',import.meta.url),'export const add=()=>99;');export const add=(a,b)=>a+b;") });
+  assert.notEqual(run.status, 'VERIFIED'); assert.match(await readFile(join(run.worktree, 'calc.mjs'), 'utf8'), /writeFileSync/);
 });
-
-test('baseline checks that mutate workspace stop before worker executes',async()=>{
-  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});let started=false;
-  const execute=async(argv,{cwd})=>{await writeFile(join(cwd,'generated.mjs'),'export default true');return {code:0,stdout:'ok',stderr:'',timedOut:false,truncated:false};};
-  const out=await processRun(run,{home,execute,worker:async()=>{started=true;return {code:0};}});
-  assert.equal(out.status,'BLOCKED');assert.equal(started,false);
+test('baseline execution cannot alter the original worktree', async t => {
+  const f = await fixture(t, { 'calc.mjs': "import {writeFileSync} from 'node:fs';writeFileSync(new URL('./calc.mjs',import.meta.url),'fake');export const add=(a,b)=>a-b;" });
+  const run = await beginRun({ ...f, contract: contract({ attempt_limit: 1 }) });
+  await processRun(run, { home: f.home, worker: async () => ({ code: 0 }) });
+  assert.notEqual(run.status, 'VERIFIED'); assert.notEqual(await readFile(join(run.worktree, 'calc.mjs'), 'utf8'), 'fake');
 });
