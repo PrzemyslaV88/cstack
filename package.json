@@ -1,0 +1,11 @@
+{
+  "name": "@cstack/cli",
+  "version": "0.1.0",
+  "description": "Completion-first, single-agent Codex engineering harness",
+  "type": "module",
+  "private": true,
+  "bin": { "cstack": "./src/cli.mjs" },
+  "engines": { "node": ">=22.13" },
+  "scripts": { "test": "node --test", "check": "node --check src/core.mjs && node --check src/cli.mjs" },
+  "license": "MIT"
+}
