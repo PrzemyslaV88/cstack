@@ -159,16 +159,22 @@ async function verify(run,home=dataHome(),execute=command){
     proof[c.id]={status,argv:c.argv,exit_code:result.code,timed_out:result.timedOut,output_truncated:result.truncated,duration_ms:Date.now()-started,fingerprint:fp,output_hash:outputHash};
     const db=openStore(home);try{db.prepare('INSERT OR REPLACE INTO evidence VALUES(?,?,?,?,?,?)').run(run.id,c.id,fp,status,outputHash,new Date().toISOString());}finally{db.close();}
   }
-  return {proof,paths,fp};
+  const postVerifyFingerprint=await fingerprint(run.worktree);
+  if(postVerifyFingerprint!==fp){
+    for(const p of Object.values(proof))p.status='STALE';
+  }
+  return {proof,paths:await changedPaths(run.worktree,run.base),fp:postVerifyFingerprint};
 }
-function classify(run,paths,proof){
-  const required=run.contract.criteria.filter(x=>x.required);
+function classify(run,task,paths,proof,{modifiedDuringAttempt=true}={}){
+  const required=run.contract.criteria.filter(x=>x.required&&task.criteria.includes(x.id));
   const passed=required.every(c=>proof[c.id]?.status==='PASS');
   const missing=required.some(c=>proof[c.id]?.status==='NEEDS_MANUAL_REVIEW');
   const source=runtimePaths(paths).length>0;
   const changes=paths.length>0;
   const integrity=paths.filter(p=>run.initial_paths?.includes(p)||run.oracle_paths?.includes(p)||/(^|\/)(\.github|\.cstack)(\/|$)/.test(p)||/(^|\/)(package(-lock)?\.json|pytest\.ini|tox\.ini|vitest\.config\.[^.]+|jest\.config\.[^.]+)$/.test(p));
   if(integrity.length)return {state:'NEEDS_MANUAL_VERIFICATION',reason:'Protected/test configuration changed: '+integrity.join(', ')};
+  if(Object.values(proof).some(x=>x.status==='STALE'))return {state:'REPAIR_READY',reason:'Repository changed during verification: evidence invalidated'};
+  if(run.contract.requires_runtime_change&&!modifiedDuringAttempt)return {state:'PARTIAL',reason:'Worker made no new implementation changes for current task'};
   if(!changes && run.contract.type!=='INVESTIGATE')return {state:'PARTIAL',reason:'No code changes produced'};
   if(run.contract.requires_runtime_change&&!source)return {state:'PARTIAL',reason:'No runtime implementation files changed'};
   if(missing)return {state:'NEEDS_MANUAL_VERIFICATION',reason:'Required manual acceptance is not yet verified'};
@@ -213,7 +219,10 @@ export async function processRun(run,{home=dataHome(),worker=codexWorker,execute
     run.initial_paths=trackedPaths.filter(testPath);
     run.oracle_paths=trackedPaths.filter(p=>run.contract.criteria.some(c=>c.argv?.includes(p)||c.argv?.includes('./'+p))); // Actual trusted oracles may have any filename.
     const base={};for(const c of run.contract.criteria){if(c.kind==='command'){const r=await execute(c.argv,{cwd:run.worktree,timeoutMs:c.timeout_ms});base[c.id]={exit_code:r.code,timed_out:r.timedOut};}}
-    run.baseline=base;run.baselined=true;await emit(run,'baseline',{base},home);
+    run.baseline=base;run.baselined=true;
+    const baselineChanges=await changedPaths(run.worktree,run.base);
+    if(baselineChanges.length){run.status='BLOCKED';run.reason='Baseline verifiers modified worktree: '+baselineChanges.join(', ');await emit(run,'baseline_side_effect',{paths:baselineChanges},home);await writeReport(run,home);return run;}
+    await emit(run,'baseline',{base},home);
   }
   const context=await codeMap(run.worktree,run.contract.goal);
   await writeFile(join(home,'runs',run.id,'code-map.json'),asJson(context));
@@ -233,15 +242,24 @@ export async function processRun(run,{home=dataHome(),worker=codexWorker,execute
     if(result.quota){run.status='BUDGET_EXHAUSTED';run.reason='Codex reported a usage/quota limit';await emit(run,'budget_exhausted',{task:task.id},home);break;}
     if(result.code!==0){run.status='BLOCKED';run.reason=`Codex execution failed (${result.code}): ${result.diagnostic||'unknown error'}`;await emit(run,'worker_error',{reason:run.reason},home);break;}
     run.status='VERIFYING';await save(run,home);
-    const checked=await verify(run,home,execute),outcome=classify(run,checked.paths,checked.proof);
+    const checked=await verify(run,home,execute);
     const after=checked.fp;
+    const outcome=classify(run,task,checked.paths,checked.proof,{modifiedDuringAttempt:after!==before});
     const failures=Object.entries(checked.proof).filter(([,x])=>x.status!=='PASS').map(([k,x])=>k+':'+x.status).join('; ');
     const attempt={task_id:task.id,number:count+1,before,after,changed_paths:checked.paths,proof:checked.proof,decision:outcome.state,reason:outcome.reason,failures,at:new Date().toISOString()};
     run.attempts.push(attempt);run.results=checked.proof;run.changed_paths=checked.paths;
     await emit(run,'attempt_verified',{task:task.id,number:count+1,outcome:outcome.state,reason:outcome.reason},home);
     if(afterAttempt)await afterAttempt(run);
     if(outcome.state==='VERIFIED'||outcome.state==='INVESTIGATED'){
-      run.tasks[task.id]='PASS';if(run.contract.tasks.every(t=>run.tasks[t.id]==='PASS')){run.status=outcome.state;run.reason=outcome.reason;break;}run.status='READY';continue;
+      run.tasks[task.id]='PASS';if(run.contract.tasks.every(t=>run.tasks[t.id]==='PASS')){
+        const unmet=run.contract.criteria.filter(c=>c.required&&run.results[c.id]?.status!=='PASS').map(c=>c.id);
+        if(unmet.length){
+          for(const t of run.contract.tasks)if(t.criteria.some(id=>unmet.includes(id)))run.tasks[t.id]='READY';
+          run.status='REPAIR_READY';run.reason='Previously passed criteria regressed: '+unmet.join(', ');
+          await emit(run,'criteria_regressed',{ids:unmet},home);continue;
+        }
+        run.status=outcome.state;run.reason=outcome.reason;break;
+      }run.status='READY';continue;
     }
     if(outcome.state==='NEEDS_MANUAL_VERIFICATION'){run.status=outcome.state;run.reason=outcome.reason;break;}
     if(after===before){run.status='STALLED';run.reason='Worker produced no new file changes on attempt '+(count+1);break;}

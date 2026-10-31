@@ -110,3 +110,35 @@ test('verifier configuration rewrite cannot make an npm script appear passed',as
   const out=await processRun(run,{home,worker});
   assert.notEqual(out.status,'VERIFIED');
 });
+
+
+test('task DAG advances after each dependency rather than demanding later criteria immediately',async()=>{
+  const {repo,home}=await fixture();
+  await writeFile(join(repo,'second.mjs'),"import test from 'node:test';import assert from 'node:assert/strict';import {mul} from './calc.mjs';test('mul',()=>assert.equal(mul(3,3),9));\n");
+  await runCommand(['git','add','second.mjs'],repo);await runCommand(['git','commit','-qm','second acceptance'],repo);
+  const cfg=contract({criteria:[
+    {id:'AC1',text:'Fix sum',kind:'command',argv:['node','--test','check.mjs']},
+    {id:'AC2',text:'Implement multiply',kind:'command',argv:['node','--test','second.mjs']}
+  ],tasks:[
+    {id:'T1',title:'Fix sum',depends_on:[],criteria:['AC1']},
+    {id:'T2',title:'Implement multiply',depends_on:['T1'],criteria:['AC2']}
+  ]});
+  const run=await beginRun({repo,contract:cfg,home});let calls=0;
+  const out=await processRun(run,{home,worker:async({run:r})=>{calls++;await writeFile(join(r.worktree,'calc.mjs'),calls===1?'export const add=(a,b)=>a+b;\n':'export const add=(a,b)=>a+b;export const mul=(a,b)=>a*b;\n');return {code:0};}});
+  assert.equal(out.status,'VERIFIED');assert.equal(calls,2);
+  assert.deepEqual(out.tasks,{T1:'PASS',T2:'PASS'});
+});
+
+test('a verifier mutating source invalidates evidence even if exit code says success',async()=>{
+  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract({attempt_limit:1}),home});let checks=0;
+  const execute=async(argv,{cwd})=>{checks++;if(checks===2){await writeFile(join(cwd,'calc.mjs'),'export const add=(a,b)=>a-b;\n');return {code:0,stdout:'fake pass',stderr:'',timedOut:false,truncated:false};}return command(argv,{cwd});};
+  const out=await processRun(run,{home,worker:corrected,execute});
+  assert.notEqual(out.status,'VERIFIED');assert.equal(out.results.AC1.status,'STALE');
+});
+
+test('baseline checks that mutate workspace stop before worker executes',async()=>{
+  const {repo,home}=await fixture(),run=await beginRun({repo,contract:contract(),home});let started=false;
+  const execute=async(argv,{cwd})=>{await writeFile(join(cwd,'generated.mjs'),'export default true');return {code:0,stdout:'ok',stderr:'',timedOut:false,truncated:false};};
+  const out=await processRun(run,{home,execute,worker:async()=>{started=true;return {code:0};}});
+  assert.equal(out.status,'BLOCKED');assert.equal(started,false);
+});
