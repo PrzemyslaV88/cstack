@@ -1,6 +1,6 @@
 # Validation records
 
-## Current 0.3.0 local validation
+## Historical 0.3.0 local validation
 
 On 1 November 2026, the T7 Mac completed **90 core/package tests and 77 benchmark
 regression tests**, with zero failures or skips in that configured local run.
@@ -56,3 +56,59 @@ This version intentionally rejects weak v0.1 command-only contracts. Use schema 
 ## Release decision
 
 Keep these changes on a review branch until real Docker CI and an authenticated Codex smoke test have been inspected. No automatic merge, deployment or publication is authorized by a passing fixture suite. The source archive and separate validation evidence accompany the implementation handover.
+
+## Upgrade 0.5 functional release gate — passed
+
+The final clean-source run passed **168 core/package tests,
+90 pinned benchmark regression tests, and 4 offline grader
+tests**, with zero failures or skips. Syntax checks, the real adapter images,
+scripted delivery/recovery matrix, isolated native plugin discovery, and the installed
+working-copy repair flow passed. All **144 required acceptance
+IDs** have executed passing evidence. The earlier 0.4 gate passed 154 core and 86
+benchmark tests before the working-copy extension.
+
+[Machine-readable 0.5 receipt](validation/upgrade-0.5.0.json) ·
+[0.4 receipt](validation/upgrade-0.4.0.json) ·
+[Implementation backlog with evidence](upgrade-backlog.json).
+Receipts identify the tested source, archive and log hashes. Raw private logs and
+source archives remain in the local upgrade evidence directory. Remote GitHub CI
+is configured but has not been claimed green from this local run.
+
+An earlier 0.5 run stopped one scripted journey before its worker invocation and
+therefore failed its final journey count. The failed evidence is retained; the
+final gate reran the entire suite. Local Docker readiness/cleanup timeouts encountered
+during development were blockers, never converted to passing verification.
+
+The implementation uses scripted workers for product correctness, not a fresh AI
+performance claim. On the T7 Mac, the exact twelve synthetic journeys completed
+with six applied fixes, two independently graded fixes awaiting human review, two
+verified candidates blocked by destination collisions, and two missing-environment
+setups that invoked no worker. No human approval was synthesized.
+
+Pinned pytest 8.3.5 and Vitest 4.0.18 ran inside real Docker isolation, including
+skip/missing/duplicate/error cases, writable scratch and read-only input. A relocated
+plugin completed setup, plan, scripted repair, review and apply; native Codex discovery
+used an isolated unauthenticated profile. Required Harbor integration verifies its
+frozen VCS commit and rejects unintended skips.
+
+A deterministic graph workload (seed 104729, one cold invocation then ten warm,
+Node 24.7.0/macOS arm64) selected the target source and relevant test in every run:
+
+| Generated modules + one test | Cold ms | Warm median ms | Warm nearest-rank p95 ms |
+| --- | ---: | ---: | ---: |
+| 100 | 49.69 | 31.15 | 34.17 |
+| 1,000 | 190.75 | 189.62 | 194.23 |
+| 2,000 | 452.99 | 440.03 | 449.52 |
+
+These are local analysis timings, not a before/after model experiment. The largest
+workload exceeds the default 2,000-source scan limit by its extra test; coverage is
+reported partial and uses the bounded fallback. Warm runs reuse OS/file and process caches, with no persistent graph
+cache. Raw local measurements include each invocation, coverage and peak process RSS.
+
+**Matched model-performance study: NOT_RUN. Human usability study: NOT_RUN.**
+`python -m bench.journey prepare|validate|run|report` freezes cases, identities, Latin
+rotation and budgets. The run command requires separate explicit budget/approval
+provenance, stops on unknown usage, and never treats pending review as delivery.
+The full study requires eligible real defects and a successful smoke-accounting gate.
+The twelve scripted fixtures alone cannot establish real-project generality or a
+speed/token advantage over pstack.

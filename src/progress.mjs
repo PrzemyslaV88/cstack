@@ -1,0 +1,10 @@
+import {plain} from './cli-output.mjs';
+const labels={preflight:'Checking project setup',baseline_started:'Reproducing the problem',context_started:'Finding relevant files',attempt_reserved:'Working on the fix',worker_started:'Working on the fix',verification_started:'Checking the proposed fix',worker_finished:'Worker finished; checks still determine the result',delivery_started:'Applying the checked change',delivery_completed:'Change applied'};
+export function progressText(event){if(event.kind==='run_stopped'||event.kind==='stopped')return plain(event.reason||event.status||'Run stopped');if(event.kind==='review_pending')return event.checks==='PASS'?'Checks passed; your review is needed':'Review is pending; checks have not all passed';const name=event.phase||event.kind;return (labels[name]||plain(name.replaceAll('_',' ')))+(name==='attempt_reserved'||name==='worker_started'?` — attempt ${event.attempts}${event.max_attempts?' of '+event.max_attempts:''}`:'');}
+export function progressReporter({format='markdown',stdout=process.stdout,stderr=process.stderr,now=()=>Date.now(),heartbeatMs=15000}={}){
+ let last=null,lastAt=now(),started=now();const emit=value=>{if(format==='jsonl')stdout.write(JSON.stringify(value)+'\n');else stderr.write(plain(value.message)+'\n');};
+ return {event(event){last=event;lastAt=now();emit({kind:'progress',...event,elapsed_ms:now()-started,message:progressText(event)});},heartbeat(){if(last&&now()-lastAt>=heartbeatMs){emit({kind:'heartbeat',elapsed_ms:now()-started,message:`${progressText(last)} — still running (${Math.floor((now()-started)/1000)} seconds elapsed)`});lastAt=now();}},stop(){last=null;}};
+}
+export async function watchRun(id,{load,onChange,onHeartbeat=()=>{},signal,now=()=>Date.now(),wait=ms=>new Promise(r=>setTimeout(r,ms))}={}){
+ let revision=null,last=now();while(!signal?.aborted){const run=await load(id);if(run.revision!==revision){revision=run.revision;last=now();await onChange(run);}else if(now()-last>=15000){onHeartbeat(run);last=now();}if(!run.active)return run;await wait(1000);}return null;
+}

@@ -34,14 +34,15 @@ export async function createRunner(config = {}, { control = command } = {}) {
   const inspect = await control(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], { timeoutMs: 15000, env: dockerEnv });
   const imageId = inspect.stdout.trim();
   if (inspect.code !== 0 || !/^sha256:[a-f0-9]{64}$/.test(imageId)) throw new CstackError(`Docker/image unavailable. Explicitly pull or build ${image} first. No automatic pull or host fallback.`, 'ISOLATION');
-  const identity = hash(JSON.stringify({ backend, image: imageId, limits: 'read-only,none,65534,128,1g,1cpu', version: 2 }));
+  const identity = hash(JSON.stringify({ backend, image: imageId, limits: 'read-only,none,65534,128,1g,1cpu', version: 4 }));
   return { backend, identity, image: imageId, async execute(args, { cwd, timeoutMs, input, signal } = {}) {
     const candidateDir = await realpath(cwd);
     if (candidateDir.includes(',') || runnerDir.includes(',')) throw new CstackError('Docker bind paths must not contain commas', 'ISOLATION');
     const name = 'cstack-' + randomUUID();
     const executable = args[0] === process.execPath ? 'node' : args[0];
     const cleanup = ['docker', 'rm', '-f', name];
-    const launch = ['docker', 'run', '--rm', '--pull=never', '--name', name, '--network=none', '--read-only', '--init',
+    // One owned cleanup path avoids racing Docker auto-removal against the guardian/finalizer.
+    const launch = ['docker', 'run', '--pull=never', '--name', name, '--network=none', '--read-only', '--init',
       '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=65534:65534', '--pids-limit=128', '--memory=1g', '--cpus=1',
       '--no-healthcheck', '--tmpfs=/tmp:rw,nosuid,nodev,size=134217728,mode=1777',
       '--mount', `type=bind,src=${candidateDir},dst=/candidate,readonly`, '--mount', `type=bind,src=${runnerDir},dst=/runner,readonly`,
@@ -50,7 +51,16 @@ export async function createRunner(config = {}, { control = command } = {}) {
     try { return await control(launch, { timeoutMs, input, signal, env: dockerEnv, orphanSafe: true, cleanup }); }
     finally {
       const cleaned = await control(cleanup, { timeoutMs: 3000, env: dockerEnv });
-      if (cleaned.code !== 0 && !/No such container/i.test(cleaned.stderr)) throw new CstackError(`Cannot confirm cleanup of container ${name}: ${cleaned.stderr}`, 'ISOLATION');
+      if (cleaned.code !== 0 && !/No such container/i.test(cleaned.stderr)) {
+        let absent=false;
+        const deadline=Date.now()+15000;
+        if(cleaned.timedOut||/removal.*already in progress/i.test(cleaned.stderr))while(Date.now()<deadline){
+          const state=await control(['docker','container','inspect',name],{timeoutMs:1000,env:dockerEnv});
+          if(state.code!==0&&/No such (?:container|object)/i.test(state.stderr)){absent=true;break;}
+          await new Promise(resolve=>setTimeout(resolve,200));
+        }
+        if(!absent)throw new CstackError(`Cannot confirm cleanup of container ${name}: ${cleaned.stderr}`, 'ISOLATION');
+      }
     }
   } };
 }

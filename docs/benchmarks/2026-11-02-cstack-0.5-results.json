@@ -1,0 +1,466 @@
+{
+  "date": "2026-11-02",
+  "version": "0.5.0",
+  "status": "COMPLETED",
+  "model": "gpt-6.1-sol",
+  "reasoning": "medium",
+  "codex_version": "0.163.0",
+  "historical_cohort": "current cStack rows from 2026-11-01 multiagent comparison",
+  "aggregates": {
+    "cstack-harbor": {
+      "completed": 5,
+      "scheduled": 5,
+      "old_tokens": 773930,
+      "new_tokens": 867374,
+      "old_task_seconds": 329.000867,
+      "new_task_seconds": 346.449957,
+      "old_private_passes": 5,
+      "new_private_passes": 5,
+      "accounting_complete": true,
+      "new_child_threads": 0,
+      "token_change_percent": 12.073960177277021,
+      "task_time_change_percent": 5.303660795520027,
+      "new_median_task_seconds": 70.195874,
+      "old_non_cached_tokens": 105386,
+      "new_non_cached_tokens": 103982,
+      "verified_count": 0,
+      "pending_human_review_count": 5,
+      "first_attempt_count": 5,
+      "non_cached_token_change_percent": -1.3322452697701825
+    },
+    "cstack-codex-multiagent": {
+      "completed": 5,
+      "scheduled": 5,
+      "old_tokens": 3291046,
+      "new_tokens": 3071947,
+      "old_task_seconds": 575.330104,
+      "new_task_seconds": 484.49384499999996,
+      "old_private_passes": 5,
+      "new_private_passes": 5,
+      "accounting_complete": true,
+      "new_child_threads": 10,
+      "token_change_percent": -6.6574274561947755,
+      "task_time_change_percent": -15.788546152627546,
+      "new_median_task_seconds": 96.242916,
+      "old_non_cached_tokens": 429734,
+      "new_non_cached_tokens": 334155,
+      "verified_count": 0,
+      "pending_human_review_count": 5,
+      "first_attempt_count": 5,
+      "non_cached_token_change_percent": -22.241433072551853
+    }
+  },
+  "rows": [
+    {
+      "case": "flask-5014",
+      "arm": "cstack-harbor",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 72797,
+      "input_tokens": 72045,
+      "cached_input_tokens": 56448,
+      "output_tokens": 752,
+      "agent_seconds": 37.158824,
+      "old_tokens": 62794,
+      "old_seconds": 34.099417,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 0,
+      "thread_count": 1,
+      "attempts": 1,
+      "token_change_percent": 15.929865910755803,
+      "time_change_percent": 8.972021427815037,
+      "old_cached_input_tokens": 47872,
+      "old_output_tokens": 648,
+      "controller_reason": "Review protected/test/configuration changes: tests/test_blueprints.py",
+      "controller_prompt_characters": [
+        8934
+      ],
+      "transported_prompt_bytes": [
+        9690
+      ],
+      "parent_tokens": 72797,
+      "helper_tokens": 0,
+      "context_bytes": [
+        5944
+      ],
+      "observed_non_cached_tokens": 16349,
+      "old_observed_non_cached_tokens": 14922
+    },
+    {
+      "case": "flask-5014",
+      "arm": "cstack-codex-multiagent",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 350221,
+      "input_tokens": 347311,
+      "cached_input_tokens": 297984,
+      "output_tokens": 2910,
+      "agent_seconds": 65.749245,
+      "old_tokens": 454713,
+      "old_seconds": 83.807852,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 2,
+      "thread_count": 3,
+      "attempts": 1,
+      "token_change_percent": -22.97976965690447,
+      "time_change_percent": -21.54763136036465,
+      "old_cached_input_tokens": 387712,
+      "old_output_tokens": 3703,
+      "controller_reason": "Review protected/test/configuration changes: tests/test_blueprints.py",
+      "controller_prompt_characters": [
+        8934
+      ],
+      "transported_prompt_bytes": [
+        10276
+      ],
+      "parent_tokens": 215026,
+      "helper_tokens": 135195,
+      "context_bytes": [
+        5944
+      ],
+      "observed_non_cached_tokens": 52237,
+      "old_observed_non_cached_tokens": 67001
+    },
+    {
+      "case": "sympy-12481",
+      "arm": "cstack-codex-multiagent",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 803278,
+      "input_tokens": 797608,
+      "cached_input_tokens": 717568,
+      "output_tokens": 5670,
+      "agent_seconds": 137.156219,
+      "old_tokens": 601309,
+      "old_seconds": 124.702968,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 2,
+      "thread_count": 3,
+      "attempts": 1,
+      "token_change_percent": 33.58822169633251,
+      "time_change_percent": 9.986330878668426,
+      "old_cached_input_tokens": 514048,
+      "old_output_tokens": 4547,
+      "controller_reason": "Review protected/test/configuration changes: sympy/combinatorics/tests/test_permutations.py",
+      "controller_prompt_characters": [
+        10013
+      ],
+      "transported_prompt_bytes": [
+        11471
+      ],
+      "parent_tokens": 456623,
+      "helper_tokens": 346655,
+      "context_bytes": [
+        6443
+      ],
+      "observed_non_cached_tokens": 85710,
+      "old_observed_non_cached_tokens": 87261
+    },
+    {
+      "case": "sympy-12481",
+      "arm": "cstack-harbor",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 240164,
+      "input_tokens": 238154,
+      "cached_input_tokens": 219136,
+      "output_tokens": 2010,
+      "agent_seconds": 101.928468,
+      "old_tokens": 252044,
+      "old_seconds": 106.832733,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 0,
+      "thread_count": 1,
+      "attempts": 1,
+      "token_change_percent": -4.7134627287299,
+      "time_change_percent": -4.590601459198851,
+      "old_cached_input_tokens": 227072,
+      "old_output_tokens": 2271,
+      "controller_reason": "Review protected/test/configuration changes: sympy/combinatorics/tests/test_permutations.py",
+      "controller_prompt_characters": [
+        10013
+      ],
+      "transported_prompt_bytes": [
+        10885
+      ],
+      "parent_tokens": 240164,
+      "helper_tokens": 0,
+      "context_bytes": [
+        6443
+      ],
+      "observed_non_cached_tokens": 21028,
+      "old_observed_non_cached_tokens": 24972
+    },
+    {
+      "case": "sympy-24539",
+      "arm": "cstack-harbor",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 137917,
+      "input_tokens": 136733,
+      "cached_input_tokens": 123520,
+      "output_tokens": 1184,
+      "agent_seconds": 62.510908,
+      "old_tokens": 81918,
+      "old_seconds": 55.174533,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 0,
+      "thread_count": 1,
+      "attempts": 1,
+      "token_change_percent": 68.35982323787202,
+      "time_change_percent": 13.296668954135061,
+      "old_cached_input_tokens": 65664,
+      "old_output_tokens": 1141,
+      "controller_reason": "Review protected/test/configuration changes: sympy/polys/tests/test_rings.py",
+      "controller_prompt_characters": [
+        10389
+      ],
+      "transported_prompt_bytes": [
+        11397
+      ],
+      "parent_tokens": 137917,
+      "helper_tokens": 0,
+      "context_bytes": [
+        6236
+      ],
+      "observed_non_cached_tokens": 14397,
+      "old_observed_non_cached_tokens": 16254
+    },
+    {
+      "case": "sympy-24539",
+      "arm": "cstack-codex-multiagent",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 436615,
+      "input_tokens": 432354,
+      "cached_input_tokens": 386816,
+      "output_tokens": 4261,
+      "agent_seconds": 96.242916,
+      "old_tokens": 401039,
+      "old_seconds": 95.347068,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 2,
+      "thread_count": 3,
+      "attempts": 1,
+      "token_change_percent": 8.870957687406955,
+      "time_change_percent": 0.9395653361884193,
+      "old_cached_input_tokens": 330112,
+      "old_output_tokens": 3889,
+      "controller_reason": "Review protected/test/configuration changes: sympy/polys/tests/test_rings.py",
+      "controller_prompt_characters": [
+        10389
+      ],
+      "transported_prompt_bytes": [
+        11983
+      ],
+      "parent_tokens": 270115,
+      "helper_tokens": 166500,
+      "context_bytes": [
+        6236
+      ],
+      "observed_non_cached_tokens": 49799,
+      "old_observed_non_cached_tokens": 70927
+    },
+    {
+      "case": "pytest-7236",
+      "arm": "cstack-codex-multiagent",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 658274,
+      "input_tokens": 653286,
+      "cached_input_tokens": 584192,
+      "output_tokens": 4988,
+      "agent_seconds": 88.506779,
+      "old_tokens": 853548,
+      "old_seconds": 143.530243,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 2,
+      "thread_count": 3,
+      "attempts": 1,
+      "token_change_percent": -22.877916649092967,
+      "time_change_percent": -38.33579798231096,
+      "old_cached_input_tokens": 773760,
+      "old_output_tokens": 7342,
+      "controller_reason": "Review protected/test/configuration changes: testing/test_unittest.py",
+      "controller_prompt_characters": [
+        14344
+      ],
+      "transported_prompt_bytes": [
+        16275
+      ],
+      "parent_tokens": 448722,
+      "helper_tokens": 209552,
+      "context_bytes": [
+        5909
+      ],
+      "observed_non_cached_tokens": 74082,
+      "old_observed_non_cached_tokens": 79788
+    },
+    {
+      "case": "pytest-7236",
+      "arm": "cstack-harbor",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 229839,
+      "input_tokens": 227195,
+      "cached_input_tokens": 204672,
+      "output_tokens": 2644,
+      "agent_seconds": 74.655883,
+      "old_tokens": 223572,
+      "old_seconds": 72.405624,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 0,
+      "thread_count": 1,
+      "attempts": 1,
+      "token_change_percent": 2.8031238258815927,
+      "time_change_percent": 3.107851124934724,
+      "old_cached_input_tokens": 193280,
+      "old_output_tokens": 2033,
+      "controller_reason": "Review protected/test/configuration changes: testing/test_unittest.py",
+      "controller_prompt_characters": [
+        14344
+      ],
+      "transported_prompt_bytes": [
+        15689
+      ],
+      "parent_tokens": 229839,
+      "helper_tokens": 0,
+      "context_bytes": [
+        5909
+      ],
+      "observed_non_cached_tokens": 25167,
+      "old_observed_non_cached_tokens": 30292
+    },
+    {
+      "case": "sphinx-9230",
+      "arm": "cstack-harbor",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 186657,
+      "input_tokens": 184816,
+      "cached_input_tokens": 159616,
+      "output_tokens": 1841,
+      "agent_seconds": 70.195874,
+      "old_tokens": 153602,
+      "old_seconds": 60.48856,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 0,
+      "thread_count": 1,
+      "attempts": 1,
+      "token_change_percent": 21.519902084608276,
+      "time_change_percent": 16.04818167269977,
+      "old_cached_input_tokens": 134656,
+      "old_output_tokens": 1519,
+      "controller_reason": "Review protected/test/configuration changes: tests/test_domain_py.py",
+      "controller_prompt_characters": [
+        12065
+      ],
+      "transported_prompt_bytes": [
+        13455
+      ],
+      "parent_tokens": 186657,
+      "helper_tokens": 0,
+      "context_bytes": [
+        6319
+      ],
+      "observed_non_cached_tokens": 27041,
+      "old_observed_non_cached_tokens": 18946
+    },
+    {
+      "case": "sphinx-9230",
+      "arm": "cstack-codex-multiagent",
+      "independent_reward": 1.0,
+      "status": "VERIFIED",
+      "controller_status": "NEEDS_MANUAL_VERIFICATION",
+      "human_review_required": true,
+      "total_tokens": 823559,
+      "input_tokens": 818224,
+      "cached_input_tokens": 751232,
+      "output_tokens": 5335,
+      "agent_seconds": 96.838686,
+      "old_tokens": 980437,
+      "old_seconds": 127.941973,
+      "usage_complete": true,
+      "native_complete": true,
+      "child_agents": 2,
+      "thread_count": 3,
+      "attempts": 1,
+      "token_change_percent": -16.000824122304646,
+      "time_change_percent": -24.31046377563679,
+      "old_cached_input_tokens": 855680,
+      "old_output_tokens": 7079,
+      "controller_reason": "Review protected/test/configuration changes: tests/test_domain_py.py",
+      "controller_prompt_characters": [
+        12065
+      ],
+      "transported_prompt_bytes": [
+        14041
+      ],
+      "parent_tokens": 435436,
+      "helper_tokens": 388123,
+      "context_bytes": [
+        6319
+      ],
+      "observed_non_cached_tokens": 72327,
+      "old_observed_non_cached_tokens": 124757
+    }
+  ],
+  "validation": {
+    "original_fail_reference_pass_cases": 5,
+    "model_calls": 0,
+    "adapter_tests": 66,
+    "native_accounting_tests": 10
+  },
+  "protocol_differences": [
+    "Current 0.5 controller with schema-3 evidence-v1 context; no hand-picked source hints.",
+    "Public criterion bytes and expected outcomes, worker/public/private images, model, effort, CLI, CPU allocation and per-trial limits preserved.",
+    "Full issue remains in the bounded goal. Complete frozen public reproduction is appended to the initial worker prompt and remains in resumed native conversation.",
+    "Transport returns native root thread identity, enabling resumed context omission. Admission charges parent/helper cumulative deltas.",
+    "Single mode disables delegation. Multi mode uses one code writer and two actual native read-only helpers; all seats use the same model and effort.",
+    "Setup/profile convenience and new pytest/Vitest adapters are not exercised: historical public probes and separate upstream private tests remain identical."
+  ],
+  "limitations": [
+    "One new trial per mode/bug; historical comparison with model/cache/service variation does not establish causal speedup.",
+    "Tokens include cached input once and all helpers; not billed cost or full outer-chat cost.",
+    "Task time excludes provisioning and private grading. Controller verification and private grader pass are separate; human review is not synthesized.",
+    "Multi-agent benchmark adapter remains experimental; every helper uses the same model family, reducing review diversity."
+  ],
+  "artifacts": {
+    "work_directory": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/work-both",
+    "source_archive": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/released-source.tar",
+    "source_archive_sha256": "d83c0f495260308f2bde14a461cabde9b6d59dedfa553fd175e6f9f130e5e1fd",
+    "benchmark_runtime_archive": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/benchmark-runtime.tar",
+    "benchmark_runtime_sha256": "cd822226ce0d4e62ede00320afae548b4f8fba512f209ced829af8427f9d278c",
+    "benchmark_transport_patch": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/benchmark-transport.patch",
+    "implementation_digest": "c8c2e156e5af84587a011a8b0534394f982d4312cb84994243b9f4eb05ee166c",
+    "runtime_digest": "c09b18cce33473082a84a71e53ba195415a7c17e3ddc07476152dc89e8cd579a",
+    "historical_sha256": "9203089e960f694e04274cc17e660b2d4ec113ca236ca44fea4f151dfd94ac5a"
+  }
+}

@@ -1,0 +1,5 @@
+
+> @cstack/cli@0.3.0 check
+> node scripts/check.mjs
+
+Syntax checked 35 JavaScript modules.

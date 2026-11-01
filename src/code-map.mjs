@@ -9,12 +9,12 @@ export function rankedFiles(files, goal = '') {
 const displayImport = value => value == null ? null : /:\/\/|[?&](?:token|key|password|secret)=/i.test(value)
   ? '[URL import details omitted]' : value.replace(/[\r\n\0]/g, '?');
 
-export async function dependencyGraph(reader, { maxFiles = 2000, goal = '' } = {}) {
+export async function dependencyGraph(reader, { maxFiles = 2000, goal = '', priority = [] } = {}) {
   const sourceFiles = reader.files.filter(f => importLanguage(f.path)), resolveImport = await importResolver(reader);
   const nodes = new Map(sourceFiles.map(f => [f.path, { path: f.path, language: f.language, scanned: false }]));
   const links = new Map(), external = [], unresolved = [];
   let scanned = 0;
-  for (const { path } of rankedFiles(sourceFiles, goal).slice(0, maxFiles)) {
+  for (const { path } of rankedFiles(sourceFiles, goal).sort((a,b)=>Number(priority.includes(b.path))-Number(priority.includes(a.path))).slice(0, maxFiles)) {
     const data = await reader.read(path); if (!data) continue;
     nodes.get(path).scanned = true; scanned++;
     for (const declaration of importsOf(data.source, path)) {

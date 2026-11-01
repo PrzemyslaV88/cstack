@@ -11,9 +11,9 @@ async function temporary(t) {
   const dir = await mkdtemp(join(tmpdir(), 'cstack-plugin-test-'));
   t.after(() => rm(dir, { recursive: true, force: true })); return dir;
 }
-test('built plugin runs after relocation without the source checkout or global cstack', async t => {
+test('PLUGIN-02 PLUGIN-03: built plugin runs after relocation without the source checkout or global cstack', async t => {
   const root = await temporary(t), built = await buildPlugin({ output: join(root, 'marketplace') });
-  const moved = join(root, 'relocated'); await cp(built.pluginRoot, moved, { recursive: true });
+  const moved = join(root, 'relocated with spaces'); await cp(built.pluginRoot, moved, { recursive: true });
   const helper = join(moved, 'skills/cstack/scripts/cstack.mjs');
   const cfg = join(root, 'contract.json'); await writeFile(cfg, JSON.stringify(contract()));
   const result = await command([process.execPath, helper, 'validate', '--contract', cfg], { cwd: root });
@@ -32,7 +32,7 @@ test('build is repeatable and refuses to overwrite an altered generated runtime'
   await assert.rejects(buildPlugin({ output }), /preserving/);
   assert.equal(await readFile(path, 'utf8'), '// user-altered generated copy\n');
 });
-test('unexpected files in a generated bundle are preserved and rejected', async t => {
+test('PLUGIN-04: unexpected files in a generated bundle are preserved and rejected', async t => {
   const root = await temporary(t), output = join(root, 'marketplace');
   const built = await buildPlugin({ output });
   const extra = join(built.pluginRoot, 'private-not-for-distribution.json');
@@ -43,7 +43,7 @@ test('unexpected files in a generated bundle are preserved and rejected', async 
 
 test('relocated analysis skills map Python and identify stack declarations without Docker or Codex', async t => {
   const root = await temporary(t), built = await buildPlugin({ output: join(root, 'marketplace') });
-  const moved = join(root, 'relocated'), project = join(root, 'project');
+  const moved = join(root, 'relocated with spaces'), project = join(root, 'project');
   await cp(built.pluginRoot, moved, { recursive: true });
   const { mkdir } = await import('node:fs/promises'); await mkdir(project);
   await writeFile(join(project, 'app.py'), 'from helper import value\n');

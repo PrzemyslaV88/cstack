@@ -17,5 +17,6 @@ export async function fixture(t, files = {}) {
   await git(repo, 'add', '-f', '.'); await git(repo, 'commit', '-qm', 'baseline');
   t.after(() => rm(root, { recursive: true, force: true })); return { root, repo, home };
 }
-export const edit = source => async ({ run }) => { await writeFile(join(run.worktree, 'calc.mjs'), source); return { code: 0 }; };
+export const scriptedUsage = {accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}]};
+export const edit = source => async ({ run }) => { await writeFile(join(run.worktree, 'calc.mjs'), source); return { code: 0, ...scriptedUsage }; };
 export const correct = edit('export const add=(a,b)=>a+b;\n');

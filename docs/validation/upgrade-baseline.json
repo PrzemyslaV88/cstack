@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "baseline_version": "0.3.0",
+  "commit": "590c8263fb4ddd32365b99b892bd52fcdb7898e7",
+  "source_archive_sha256": "32337a923529d1273ec215bb8e4e3f4bc5a60abf09dadfc02d6ccef4fd0b1fc8",
+  "starting_unrelated_diff_sha256": "529fa29e871e8a88d43f5dc6b1bb4ecd69032b4152a69546ea12c37d83a7f7e3",
+  "model_invocations": 0,
+  "environment": {
+    "node": "24.7.0",
+    "python": "3.12",
+    "git": "2.54.0 (Apple Git-157)",
+    "codex": "0.163.0",
+    "docker": "29.2.1",
+    "docker_context": "colima-cstack",
+    "platform": "macOS arm64"
+  },
+  "records": [
+    {
+      "file": "baseline/core.txt",
+      "sha256": "e7da4bc96a739fdd3dbd9a53285bd9adf2066668a5fb2fb46797a0d1bbd0919c",
+      "exit_code": 0
+    },
+    {
+      "file": "baseline/bench.txt",
+      "sha256": "15bd620026538d709ce4e8a5d572337c1fad8d5ac3b63b0221dbe4656b6e0377",
+      "exit_code": 0
+    },
+    {
+      "file": "baseline/grader.txt",
+      "sha256": "3d043ca880a7bea71274004787bf0088e04aaf45067b277608112aee9f7a2337",
+      "exit_code": 0
+    },
+    {
+      "file": "baseline/syntax.txt",
+      "sha256": "1bb65e8a6afe84764e52b9c6c5c37538e40aae64c054a1cebc2a4b34be08bab6",
+      "exit_code": 0
+    }
+  ],
+  "note": "Historical commands executed before runtime changes. Counts are observed baseline results, not a fixed future test-count gate."
+}

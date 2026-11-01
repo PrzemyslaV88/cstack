@@ -3,9 +3,9 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
-  test:
+  core:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       matrix:
         node: ['22.16.0', '24']
@@ -17,13 +17,78 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      # This is explicit CI setup, not an implicit runtime network/billing fallback.
-      - run: docker pull "$CSTACK_TEST_IMAGE"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # Explicit test preparation; the runtime itself never pulls or installs.
+      - run: npm install --global @openai/codex@0.163.0
+      - run: docker pull "$CSTACK_TEST_IMAGE"
+      - run: docker build --pull=false -t cstack-test-vitest:4.0.18 test/fixtures/environments/vitest
+      - run: docker pull python:3.12.12-slim-bookworm
+      - run: docker build -t cstack-test-pytest:8.3.5 test/fixtures/environments/pytest
       - run: npm run check
       - run: npm test
-      - run: python -m unittest discover -s bench -t . -p 'test_*.py' -v
-      - run: python -m py_compile bench/harbor_agents.py bench/lab.py bench/protocol.py
-      # No API keys, live models, user credentials, pushes or deployments.
+      - run: python -m unittest discover -s test -p 'grader_offline_test.py' -v
+  analysis-portability:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ['22.16.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --test test/analysis.test.mjs test/cli-routing.test.mjs test/stack-scopes.test.mjs test/project-profile.test.mjs test/context.test.mjs test/impact.test.mjs
+        env:
+          CSTACK_CODEX_BIN: /nonexistent/codex
+          DOCKER_HOST: unix:///nonexistent/docker.sock
+  harbor-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CSTACK_TEST_RUNNER: docker
+      CSTACK_TEST_IMAGE: node:22.16.0-bookworm-slim
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r bench/requirements.lock
+      - run: docker pull node:22.16.0-bookworm-slim
+      - run: python scripts/test-bench-ci.py --require-harbor --fail-on-skip --report .audit/bench-ci.json
+  package-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --global @openai/codex@0.163.0
+      - run: docker pull node:22.16.0-bookworm-slim
+      - run: node --test test/plugin.test.mjs test/native-plugin.test.mjs test/package-flow.test.mjs
+        env:
+          CSTACK_TEST_RUNNER: docker
+      - run: npm run plugin:build
+  test-adapter-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: docker pull node:22.16.0-bookworm-slim
+      - run: docker build --pull=false -t cstack-test-vitest:4.0.18 test/fixtures/environments/vitest
+      - run: docker pull python:3.12.12-slim-bookworm
+      - run: docker build -t cstack-test-pytest:8.3.5 test/fixtures/environments/pytest
+      - run: node --test test/test-adapters.test.mjs test/environment-plan.test.mjs test/verification-order.test.mjs
+        env:
+          CSTACK_TEST_RUNNER: docker
+# No live models, account credentials, publishing, or automatic performance claims.

@@ -3,9 +3,10 @@ import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { hash, json, redact, requireThat } from './util.mjs';
+import {executeTestSuite} from './test-adapters.mjs';
 import { manifest, fingerprint } from './snapshot.mjs';
 export const verifierIdentity = async () => hash((await Promise.all(
-  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs']
+  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs', './test-adapters.mjs', './runners/pytest-wrapper.py', './runners/vitest-wrapper.mjs', './runners/stage-project.mjs', './sandbox.mjs', './process.mjs', './runners/guardian.mjs', './runners/linux.sh']
     .map(p => readFile(fileURLToPath(new URL(p, import.meta.url)))))).map(b => hash(b)).join(':'));
 export function parseTestReport(stdout, expected) {
   let events;
@@ -30,13 +31,17 @@ function assertProbe(result, item) {
   return { pass: result.stdout === item.expect_stdout, observed: result.stdout,
     diagnostic: `Expected stdout ${JSON.stringify(item.expect_stdout)}; observed ${JSON.stringify(result.stdout)}` };
 }
-export async function verify(run, snapshot, runner, { home, signal, deadline = Infinity } = {}) {
+export async function verify(run, snapshot, runner, { home, signal, deadline = Infinity, focused = false } = {}) {
   const proofs = {}, before = hash(json(await manifest(snapshot.path, run.contract))), version = await verifierIdentity();
   requireThat(before === snapshot.artifact_digest, 'Sealed artifact was modified before verification', 'INTEGRITY');
   const evidenceDir = join(home, 'runs', run.id, 'evidence'); await mkdir(evidenceDir, { recursive: true, mode: 0o700 });
-  for (const c of run.contract.criteria) {
+  const criteria=[...run.contract.criteria];
+  if(focused && run.contract.schema_version===3)criteria.sort((a,b)=>{const rank=c=>!c.required?2:run.results[c.id]?.status==='FAIL'?0:1;return rank(a)-rank(b);});
+  let stopped=false;
+  for (const c of criteria) {
     const common = { fingerprint: snapshot.source_digest, artifact_digest: snapshot.artifact_digest, runner_identity: runner.identity,
       verifier_identity: version, contract_hash: run.contract_hash, at: new Date().toISOString() };
+    if(stopped){proofs[c.id]={...common,status:'NOT_RUN',strength:c.kind==='probe'?'external-observation':'reported-tests'};continue;}
     if (c.kind === 'manual') {
       const approval = run.approvals.find(a => a.criterion === c.id && a.fingerprint === snapshot.source_digest && a.contract_hash === run.contract_hash);
       proofs[c.id] = { ...common, status: approval ? 'PASS' : 'NEEDS_MANUAL_REVIEW', strength: 'human', ...(approval ? { approval } : {}) }; continue;
@@ -56,6 +61,9 @@ export async function verify(run, snapshot, runner, { home, signal, deadline = I
         error ||= result.code === 127 || Boolean(result.timedOut || result.aborted || result.truncated);
         if (error) break;
       }
+    } else if(c.kind==='test-suite'){
+      const result=await executeTestSuite(c,runner,{cwd:snapshot.path,timeoutMs:Math.max(1,Math.min(c.timeout_ms,deadline-Date.now())),signal});
+      outputs.push(result.stdout+'\n---stderr---\n'+result.stderr);details.push(result.parsed);pass=result.parsed.passed;error=result.parsed.error;
     } else {
       const args = [c.argv[0], '--test-reporter=/runner/node-reporter.mjs', ...c.argv.slice(1)];
       const result = await execute(args);
@@ -72,6 +80,7 @@ export async function verify(run, snapshot, runner, { home, signal, deadline = I
     const record = json(proof), recordHash = hash(record);
     await writeFile(join(evidenceDir, recordHash + '.json'), record, { mode: 0o600 });
     proofs[c.id] = { ...proof, evidence_hash: recordHash };
+    if(run.contract.schema_version===3&&(error||focused&&c.required&&!pass))stopped=true;
   }
   if (hash(json(await manifest(snapshot.path, run.contract))) !== before || await fingerprint(run.worktree, run.contract) !== snapshot.source_digest) {
     for (const proof of Object.values(proofs)) proof.status = 'STALE';

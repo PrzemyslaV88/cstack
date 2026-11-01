@@ -167,3 +167,10 @@ Current execution records: [live pilot](../docs/COMPARISON_RESULTS.md) and
 - pstack pinned source: https://github.com/cursor/plugins/tree/4dd1d05818d19792e7cd6e818f1667f95f7e1dbe/pstack
 - Task: https://hub.harborframework.com/tasks/swe-bench/sympy__sympy-20590/latest
 - Codex saved authentication: https://learn.chatgpt.com/docs/auth
+
+## Upgrade journey experiment
+
+See [the matched single-worker experiment](JOURNEY_BENCHMARK.md) for frozen cases,
+reference validation, explicit budget gates, native token reconciliation, regression
+checks, phase timing and paired statistics. This is separate from historical results;
+the upgrade's live-model and human usability studies are currently **NOT_RUN**.

@@ -1,0 +1,76 @@
+{
+  "input": {
+    "schema_version": 2,
+    "goal": "Preserve calculator behavior",
+    "criteria": [
+      {
+        "id": "ADD",
+        "kind": "probe",
+        "text": "Adds two numbers",
+        "argv": [
+          "node",
+          "-e",
+          "console.log(6)"
+        ],
+        "cases": [
+          {
+            "stdin": "",
+            "expect_json": 6
+          }
+        ]
+      }
+    ]
+  },
+  "normalized": {
+    "schema_version": 2,
+    "type": "FIX",
+    "goal": "Preserve calculator behavior",
+    "policy": "balanced",
+    "attempt_limit": 3,
+    "criteria": [
+      {
+        "id": "ADD",
+        "text": "Adds two numbers",
+        "required": true,
+        "kind": "probe",
+        "timeout_ms": 30000,
+        "argv": [
+          "node",
+          "-e",
+          "console.log(6)"
+        ],
+        "cases": [
+          {
+            "id": "case-1",
+            "stdin": "",
+            "expect_json": 6
+          }
+        ]
+      }
+    ],
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Preserve calculator behavior",
+        "depends_on": [],
+        "criteria": [
+          "ADD"
+        ]
+      }
+    ],
+    "implementation_paths": [],
+    "workspace_inputs": [],
+    "approved_test_fixtures": [],
+    "runner": {
+      "backend": "docker"
+    },
+    "budget": {
+      "max_attempts": 3,
+      "max_active_ms": 1800000,
+      "worker_timeout_ms": 600000,
+      "max_observed_tokens": 500000
+    },
+    "reasoning": "medium"
+  },
+  "contract_hash": "f74ce8ec3a86a90086fe0f6342d541537b56daeab360e2dc74fb581a0d28bf25"
+}

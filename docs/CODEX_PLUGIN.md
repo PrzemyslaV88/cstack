@@ -1,7 +1,7 @@
 # cStack for Codex
 
-cStack 0.3.0 is packaged as a local Codex plugin. It includes the controller runtime
-and three skills. Repairs use the existing ChatGPT Codex sign-in, Git and Docker;
+cStack 0.4.0 is packaged as a local Codex plugin. It includes the controller runtime
+and four skills. Repairs use the existing ChatGPT Codex sign-in, Git and Docker;
 there is no separate service or automatic API-key billing fallback.
 
 ## Use it
@@ -16,11 +16,12 @@ Codex discovers this exact namespaced skill as `cstack:cstack`. You can also ask
 "Use cStack to fix and verify this bug." Restart the app if the newly installed
 workflow is not visible in a new chat.
 
-Two read-only skills are also included:
+Three read-only skills are included:
 
 ```text
 $cstack:graph-map Map this project and show the main file dependencies.
 $cstack:stack-analysis Explain the languages, frameworks and build/test tools in this project.
+$cstack:impact-analysis Identify consumers and tests affected by this change.
 ```
 
 These use the bundled local analyser without Docker or authentication, accept
@@ -143,3 +144,25 @@ Evidence: `/Volumes/CStack-Comparison/plugin-analysis-20261101/`, including
 `plugin-analysis-results.json`, the installed/discovered skill metadata, test logs
 and generated reports. These analysis exercises launched no model workers; they
 do not establish a new repair-quality or token-efficiency benchmark result.
+
+
+## Guided upgrade workflow
+
+The repair skill now uses private profiles and frozen plans, exposes a review page,
+and supports checked patch application/recovery. See [setup](SETUP.md),
+[review and delivery](REVIEW_AND_DELIVERY.md), and [impact](IMPACT.md).
+Native discovery is tested in a fresh unauthenticated profile. That test does not
+install an upgrade into your normal profile; installation remains an explicit action.
+
+## Version 0.5 upgrade
+
+The bundle exposes four skills: `cstack:cstack`, `cstack:graph-map`,
+`cstack:stack-analysis`, and `cstack:impact-analysis`. Repair helpers include setup,
+profiles, frozen plans, progress, private HTML review and journaled apply/recovery.
+Working-copy mode is explicit and preserves existing staging; clean remains default.
+
+Release validation uses a fresh native Codex profile without copied authentication.
+It discovers the installed skills through the native CLI and completes a scripted
+repair from the installed runtime against a deliberately dirty fixture. No model is
+needed for that package test. Building and testing a bundle does not update the user's
+normal plugin installation or publish a marketplace release.

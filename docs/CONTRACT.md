@@ -59,3 +59,24 @@ Each attempted worker invocation is reserved durably before launch. Per-task lim
 `VERIFIED`, `INVESTIGATED`, `ALREADY_SATISFIED`, `NEEDS_MANUAL_VERIFICATION`, `BLOCKED`, `STALLED` and `BUDGET_EXHAUSTED` are distinct. Resume revalidates current code and preserves reservations. Environment changes and exhausted limits require an explicitly reviewed new run, not a silent budget reset.
 
 Schema-1 command-only contracts must be migrated. An arbitrary successful command is not sufficient proof. v0.1 databases and reports remain untouched and are never promoted to v0.2 evidence.
+
+
+## Additive schema 3
+
+Schema 2 retains its original normalization and hash. New plans use schema 3 with
+`source_mode` (`clean` by default; explicit `working-copy` in 0.5), optional paired project profile/environment
+digests, and context settings: policy evidence-v1 or filename-v1, explicit files,
+literal symbols and sanitized path/line frames. Raw trace messages are not frozen.
+
+A test-suite criterion selects pytest or Vitest, relative roots, frozen expected
+IDs, explicit pytest plugins and an optional relative configuration. It accepts
+no arbitrary shell/reporters/watch flags. A required test must actually pass;
+skips, xfail, xpass, todo and missing expected IDs do not satisfy acceptance.
+Malformed/incomplete streams are errors. Reported tests remain supporting proof;
+an external probe or actual human outcome review is still needed.
+
+See [published schemas](schemas/contract-v3.schema.json) and [setup](SETUP.md).
+Semantic checks additionally enforce content identities, existing inputs, frozen
+versions and prompt budgets. Neither schema parsing nor project discovery runs code
+from package scripts. Missing usage blocks further worker admission, including after
+resume; a candidate may still be checked while its usage remains explicitly unknown.

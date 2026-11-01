@@ -1,0 +1,1386 @@
+{
+  "schema_version": 1,
+  "specification": "UPGRADE_IMPLEMENTATION_PLAN.md",
+  "specification_version": 1,
+  "baseline": {
+    "version": "0.3.0",
+    "commit": "590c8263fb4ddd32365b99b892bd52fcdb7898e7"
+  },
+  "status": "validated",
+  "execution": {
+    "default_order": [
+      "C00",
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06",
+      "C07",
+      "C08",
+      "C10",
+      "C09",
+      "C11",
+      "C12",
+      "C13",
+      "C14",
+      "C15",
+      "C16",
+      "C17",
+      "D01",
+      "D02",
+      "D03"
+    ],
+    "agent_mode": "single implementer unless separately authorized",
+    "commit_push": "requires implementing-session authorization",
+    "live_benchmarks": "explicit frozen experiment budget and authorization required",
+    "runtime_dependencies": "no new runtime npm dependencies"
+  },
+  "tasks": [
+    {
+      "id": "C00",
+      "title": "Capture baseline and compatibility fixtures",
+      "release": "0.4.0",
+      "order": 1,
+      "status": "validated",
+      "depends_on": [],
+      "spec_sections": [
+        "3",
+        "19.2"
+      ],
+      "files": [
+        "test/upgrade-compatibility.test.mjs",
+        "test/fixtures/upgrade/v2-run.json",
+        "docs/VALIDATION.md"
+      ],
+      "acceptance_ids": [
+        "BASE-01",
+        "BASE-02",
+        "BASE-03"
+      ],
+      "acceptance": [
+        "Existing core, benchmark and offline-grader checks run with actual environment identities.",
+        "Version-2 run/contract fixtures are sanitized and preserve original hashes.",
+        "Source archive, starting revision and unrelated changes are recorded without a new model call."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/upgrade-compatibility.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "BASE-01",
+            "BASE-02",
+            "BASE-03"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C01",
+      "title": "Versioned contracts and immutable provenance",
+      "release": "0.4.0",
+      "order": 2,
+      "status": "validated",
+      "depends_on": [
+        "C00"
+      ],
+      "spec_sections": [
+        "5"
+      ],
+      "files": [
+        "src/contracts.mjs",
+        "src/util.mjs",
+        "src/core.mjs",
+        "src/store.mjs",
+        "docs/schemas/contract-v3.schema.json",
+        "docs/schemas/upgrade-artifacts.schema.json",
+        "test/upgrade-compatibility.test.mjs",
+        "bench/test_upgrade_schemas.py"
+      ],
+      "acceptance_ids": [
+        "SCHEMA-01",
+        "SCHEMA-02",
+        "SCHEMA-03",
+        "SCHEMA-04",
+        "SCHEMA-05"
+      ],
+      "acceptance": [
+        "Schema-2 hashes and loading semantics are preserved.",
+        "Strict schema-3 normalization and canonical new-artifact hashing agree with published schemas.",
+        "Origin/source/index identities and additive run fields have explicit defaults and legacy handling.",
+        "New schema rejects unsafe paths, unsupported source modes and oversized mandatory prompt content.",
+        "Unknown fields, invalid numeric values and duplicate identifiers are rejected."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/upgrade-compatibility.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "SCHEMA-01",
+            "SCHEMA-02",
+            "SCHEMA-03",
+            "SCHEMA-04",
+            "SCHEMA-05"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C02",
+      "title": "Fail closed on unresolved worker usage",
+      "release": "0.4.0",
+      "order": 3,
+      "status": "validated",
+      "depends_on": [
+        "C01"
+      ],
+      "spec_sections": [
+        "6"
+      ],
+      "files": [
+        "src/usage.mjs",
+        "src/codex.mjs",
+        "src/core.mjs",
+        "bench/cstack_bridge.mjs",
+        "bench/harbor_agents.py",
+        "test/helpers/fixture.mjs",
+        "test/controller.test.mjs",
+        "test/reliability.test.mjs",
+        "test/benchmark-findings.test.mjs",
+        "test/usage.test.mjs",
+        "bench/test_adapters.py"
+      ],
+      "acceptance_ids": [
+        "USAGE-01",
+        "USAGE-02",
+        "USAGE-03",
+        "USAGE-04",
+        "USAGE-05",
+        "USAGE-06",
+        "USAGE-07",
+        "USAGE-08"
+      ],
+      "acceptance": [
+        "Unknown/invalid usage blocks another worker, including after resume.",
+        "Candidate verification and true human review remain separate from accounting completeness.",
+        "Native single-turn events and benchmark cumulative deltas cannot be double counted.",
+        "Existing scripted-worker fixtures use explicit test-only complete accounting."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/usage.test.mjs test/controller.test.mjs test/reliability.test.mjs test/benchmark-findings.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "USAGE-01",
+            "USAGE-02",
+            "USAGE-03",
+            "USAGE-04",
+            "USAGE-05",
+            "USAGE-06",
+            "USAGE-07",
+            "USAGE-08"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C03",
+      "title": "Lazy CLI routing and stable output conventions",
+      "release": "0.4.0",
+      "order": 4,
+      "status": "validated",
+      "depends_on": [
+        "C01"
+      ],
+      "spec_sections": [
+        "5.4",
+        "7.1"
+      ],
+      "files": [
+        "src/cli.mjs",
+        "src/cli-output.mjs",
+        "test/cli-and-inputs.test.mjs",
+        "test/cli-routing.test.mjs"
+      ],
+      "acceptance_ids": [
+        "CLI-01",
+        "CLI-02",
+        "CLI-03",
+        "CLI-04"
+      ],
+      "acceptance": [
+        "Analysis/help neither load SQLite nor create controller state.",
+        "Per-command validation and JSON/JSONL/stdout/stderr behavior are deterministic.",
+        "Legacy commands retain documented behavior."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/cli-routing.test.mjs test/cli-and-inputs.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "CLI-01",
+            "CLI-02",
+            "CLI-03",
+            "CLI-04"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C04",
+      "title": "Scope-aware stack analysis",
+      "release": "0.4.0",
+      "order": 5,
+      "status": "validated",
+      "depends_on": [
+        "C03"
+      ],
+      "spec_sections": [
+        "7.2"
+      ],
+      "files": [
+        "src/stack-analysis.mjs",
+        "src/analysis-report.mjs",
+        "test/analysis.test.mjs",
+        "test/stack-scopes.test.mjs"
+      ],
+      "acceptance_ids": [
+        "SCOPE-01",
+        "SCOPE-02",
+        "SCOPE-03",
+        "SCOPE-04",
+        "SCOPE-05",
+        "SCOPE-06"
+      ],
+      "acceptance": [
+        "Application, test, example and benchmark scopes remain distinct.",
+        "Lockfile-only evidence cannot imply direct runtime dependency.",
+        "Existing analysis fields have documented compatibility projection."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/stack-scopes.test.mjs test/analysis.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "SCOPE-01",
+            "SCOPE-02",
+            "SCOPE-03",
+            "SCOPE-04",
+            "SCOPE-05",
+            "SCOPE-06"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C05",
+      "title": "Snapshot-bound readable review",
+      "release": "0.4.0",
+      "order": 6,
+      "status": "validated",
+      "depends_on": [
+        "C01",
+        "C02",
+        "C03"
+      ],
+      "spec_sections": [
+        "14.1"
+      ],
+      "files": [
+        "src/review.mjs",
+        "src/core.mjs",
+        "src/cli.mjs",
+        "src/cli-output.mjs",
+        "test/review.test.mjs",
+        "docs/REVIEW_AND_DELIVERY.md"
+      ],
+      "acceptance_ids": [
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09"
+      ],
+      "acceptance": [
+        "Markdown/JSON/self-contained HTML are derived from current sealed snapshots.",
+        "Protected edits, new tests, unknown usage and pending approval are separately visible.",
+        "Diff labels cannot auto-approve or assert semantic correctness.",
+        "Source text is escaped and stale review cannot authorize delivery."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/review.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "REVIEW-01",
+            "REVIEW-02",
+            "REVIEW-03",
+            "REVIEW-04",
+            "REVIEW-05",
+            "REVIEW-06",
+            "REVIEW-07",
+            "REVIEW-08",
+            "REVIEW-09"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C06",
+      "title": "Discover and store reusable project profiles",
+      "release": "0.4.0",
+      "order": 7,
+      "status": "validated",
+      "depends_on": [
+        "C01",
+        "C03",
+        "C04"
+      ],
+      "spec_sections": [
+        "8"
+      ],
+      "files": [
+        "src/project-profile.mjs",
+        "src/cli.mjs",
+        "docs/schemas/project-profile.schema.json",
+        "test/project-profile.test.mjs"
+      ],
+      "acceptance_ids": [
+        "PROFILE-01",
+        "PROFILE-02",
+        "PROFILE-03",
+        "PROFILE-04",
+        "PROFILE-05",
+        "PROFILE-06",
+        "PROFILE-07"
+      ],
+      "acceptance": [
+        "Bounded read-only discovery selects only unambiguous scopes/adapters.",
+        "Profiles are immutable/private with deterministic evidence digests.",
+        "Relevant configuration drift invalidates readiness.",
+        "Conventions never re-enable child hooks or tools."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/project-profile.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "PROFILE-01",
+            "PROFILE-02",
+            "PROFILE-03",
+            "PROFILE-04",
+            "PROFILE-05",
+            "PROFILE-06",
+            "PROFILE-07"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C07",
+      "title": "Plan and explicitly prepare verifier environments",
+      "release": "0.4.0",
+      "order": 8,
+      "status": "validated",
+      "depends_on": [
+        "C06"
+      ],
+      "spec_sections": [
+        "9"
+      ],
+      "files": [
+        "src/environment-plan.mjs",
+        "src/sandbox.mjs",
+        "src/cli.mjs",
+        "docs/schemas/environment-plan.schema.json",
+        "test/environment-plan.test.mjs",
+        "test/fixtures/upgrade/environments/",
+        "docs/SETUP.md"
+      ],
+      "acceptance_ids": [
+        "ENV-01",
+        "ENV-02",
+        "ENV-03",
+        "ENV-04",
+        "ENV-05",
+        "ENV-06",
+        "ENV-07",
+        "ENV-08",
+        "ENV-09"
+      ],
+      "acceptance": [
+        "Existing-image/npm-lock/pip-hashes/manual modes behave exactly as specified.",
+        "Planning and verification have no implicit network/install effects.",
+        "Preparation inputs and outputs are identity-checked.",
+        "Disposable test workspace preserves sealed source; scratch limits are enforced.",
+        "Unsupported project dependency setup returns an actionable manual-image path."
+      ],
+      "targeted_command": "CSTACK_TEST_RUNNER=docker node --test --test-concurrency=1 test/environment-plan.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "ENV-01",
+            "ENV-02",
+            "ENV-03",
+            "ENV-04",
+            "ENV-05",
+            "ENV-06",
+            "ENV-07",
+            "ENV-08",
+            "ENV-09"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C08",
+      "title": "Real pytest and Vitest adapters with complete final checks",
+      "release": "0.4.0",
+      "order": 9,
+      "status": "validated",
+      "depends_on": [
+        "C01",
+        "C02",
+        "C07"
+      ],
+      "spec_sections": [
+        "10"
+      ],
+      "files": [
+        "src/test-adapters.mjs",
+        "src/runners/pytest-runner.py",
+        "src/runners/vitest-runner.mjs",
+        "src/runners/vitest-reporter.mjs",
+        "src/contracts.mjs",
+        "src/verification.mjs",
+        "src/sandbox.mjs",
+        "test/test-adapters.test.mjs",
+        "test/fixtures/upgrade/pytest/",
+        "test/fixtures/upgrade/vitest/",
+        "docs/CONTRACT.md"
+      ],
+      "acceptance_ids": [
+        "ADAPTER-01",
+        "ADAPTER-02",
+        "ADAPTER-03",
+        "ADAPTER-04",
+        "ADAPTER-05",
+        "ADAPTER-06",
+        "ADAPTER-07",
+        "ADAPTER-08",
+        "ADAPTER-09",
+        "ADAPTER-10",
+        "ADAPTER-11",
+        "ADAPTER-12"
+      ],
+      "acceptance": [
+        "Pinned real runners pass collection/result/error/isolation compatibility tests.",
+        "Missing/skipped/forged/incomplete outcomes cannot grant a pass.",
+        "Failure-first feedback never reuses stale PASS or bypasses the full required set.",
+        "Adapters extend verifier identity and remain supporting evidence."
+      ],
+      "targeted_command": "CSTACK_TEST_RUNNER=docker node --test --test-concurrency=1 test/test-adapters.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "ADAPTER-01",
+            "ADAPTER-02",
+            "ADAPTER-03",
+            "ADAPTER-04",
+            "ADAPTER-05",
+            "ADAPTER-06",
+            "ADAPTER-07",
+            "ADAPTER-08",
+            "ADAPTER-09",
+            "ADAPTER-10",
+            "ADAPTER-11",
+            "ADAPTER-12"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C10",
+      "title": "Evidence-based bounded repair context",
+      "release": "0.4.0",
+      "order": 10,
+      "status": "validated",
+      "depends_on": [
+        "C01",
+        "C04",
+        "C06",
+        "C08"
+      ],
+      "spec_sections": [
+        "12"
+      ],
+      "files": [
+        "src/context.mjs",
+        "src/code-map.mjs",
+        "src/imports.mjs",
+        "src/core.mjs",
+        "test/context.test.mjs",
+        "test/fixtures/upgrade/context/"
+      ],
+      "acceptance_ids": [
+        "CONTEXT-01",
+        "CONTEXT-02",
+        "CONTEXT-03",
+        "CONTEXT-04",
+        "CONTEXT-05",
+        "CONTEXT-06",
+        "CONTEXT-07",
+        "CONTEXT-08",
+        "CONTEXT-09"
+      ],
+      "acceptance": [
+        "Ranking, ties, file allocation and excerpt budgets match the specified algorithm.",
+        "Trace/test/symbol information reaches repair context.",
+        "Partial maps degrade explicitly and source exclusions remain enforced.",
+        "Retry context includes changed evidence without duplicating unchanged excerpts."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/context.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "CONTEXT-01",
+            "CONTEXT-02",
+            "CONTEXT-03",
+            "CONTEXT-04",
+            "CONTEXT-05",
+            "CONTEXT-06",
+            "CONTEXT-07",
+            "CONTEXT-08",
+            "CONTEXT-09"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C09",
+      "title": "Guided setup and frozen ready-to-run plans",
+      "release": "0.4.0",
+      "order": 11,
+      "status": "validated",
+      "depends_on": [
+        "C02",
+        "C06",
+        "C07",
+        "C08",
+        "C10"
+      ],
+      "spec_sections": [
+        "11"
+      ],
+      "files": [
+        "src/job-plan.mjs",
+        "src/project-profile.mjs",
+        "src/cli.mjs",
+        "src/core.mjs",
+        "docs/schemas/job-plan.schema.json",
+        "test/job-plan.test.mjs",
+        "docs/SETUP.md"
+      ],
+      "acceptance_ids": [
+        "PLAN-01",
+        "PLAN-02",
+        "PLAN-03",
+        "PLAN-04",
+        "PLAN-05",
+        "PLAN-06",
+        "PLAN-07",
+        "PLAN-08"
+      ],
+      "acceptance": [
+        "Goal/acceptance/profile/environment/source form an immutable executable plan.",
+        "Setup failure differs from defect reproduction.",
+        "Already-passing baseline spends no worker tokens.",
+        "Plan changes create a new plan instead of silently changing frozen objectives."
+      ],
+      "targeted_command": "CSTACK_TEST_RUNNER=docker node --test --test-concurrency=1 test/job-plan.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "PLAN-01",
+            "PLAN-02",
+            "PLAN-03",
+            "PLAN-04",
+            "PLAN-05",
+            "PLAN-06",
+            "PLAN-07",
+            "PLAN-08"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C11",
+      "title": "Focused change-impact analysis",
+      "release": "0.4.0",
+      "order": 12,
+      "status": "validated",
+      "depends_on": [
+        "C03",
+        "C04"
+      ],
+      "spec_sections": [
+        "13"
+      ],
+      "files": [
+        "src/impact.mjs",
+        "src/cli.mjs",
+        "src/analysis-report.mjs",
+        "src/code-map.mjs",
+        "test/impact.test.mjs",
+        "docs/IMPACT.md"
+      ],
+      "acceptance_ids": [
+        "IMPACT-01",
+        "IMPACT-02",
+        "IMPACT-03",
+        "IMPACT-04",
+        "IMPACT-05",
+        "IMPACT-06",
+        "IMPACT-07",
+        "IMPACT-08"
+      ],
+      "acceptance": [
+        "Reverse traversal/cycles/deletion history are deterministic and bounded.",
+        "Test candidates state their evidence basis.",
+        "Diagram omission and scan gaps are explicit.",
+        "Revision/path inputs cannot become shell instructions."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/impact.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "IMPACT-01",
+            "IMPACT-02",
+            "IMPACT-03",
+            "IMPACT-04",
+            "IMPACT-05",
+            "IMPACT-06",
+            "IMPACT-07",
+            "IMPACT-08"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C12",
+      "title": "Readable progress, watch and run navigation",
+      "release": "0.4.0",
+      "order": 13,
+      "status": "validated",
+      "depends_on": [
+        "C02",
+        "C03",
+        "C05",
+        "C09"
+      ],
+      "spec_sections": [
+        "14.2"
+      ],
+      "files": [
+        "src/progress.mjs",
+        "src/cli-output.mjs",
+        "src/cli.mjs",
+        "src/store.mjs",
+        "src/core.mjs",
+        "test/progress.test.mjs"
+      ],
+      "acceptance_ids": [
+        "PROGRESS-01",
+        "PROGRESS-02",
+        "PROGRESS-03",
+        "PROGRESS-04",
+        "PROGRESS-05",
+        "PROGRESS-06",
+        "PROGRESS-07"
+      ],
+      "acceptance": [
+        "Phase messages reflect real state and show one actionable next step.",
+        "No fabricated completion, percentage or usage is displayed.",
+        "Watch/list are bounded and watcher cancellation does not cancel repair."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/progress.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "PROGRESS-01",
+            "PROGRESS-02",
+            "PROGRESS-03",
+            "PROGRESS-04",
+            "PROGRESS-05",
+            "PROGRESS-06",
+            "PROGRESS-07"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C13",
+      "title": "Checked patch delivery and crash recovery",
+      "release": "0.4.0",
+      "order": 14,
+      "status": "validated",
+      "depends_on": [
+        "C01",
+        "C02",
+        "C05",
+        "C09",
+        "C12"
+      ],
+      "spec_sections": [
+        "15"
+      ],
+      "files": [
+        "src/delivery.mjs",
+        "src/snapshot.mjs",
+        "src/core.mjs",
+        "src/store.mjs",
+        "src/cli.mjs",
+        "test/delivery.test.mjs",
+        "docs/REVIEW_AND_DELIVERY.md"
+      ],
+      "acceptance_ids": [
+        "DELIVERY-01",
+        "DELIVERY-02",
+        "DELIVERY-03",
+        "DELIVERY-04",
+        "DELIVERY-05",
+        "DELIVERY-06",
+        "DELIVERY-07",
+        "DELIVERY-08",
+        "DELIVERY-09",
+        "DELIVERY-10",
+        "DELIVERY-11",
+        "DELIVERY-12"
+      ],
+      "acceptance": [
+        "Only current verified repairs apply, with exact snapshot/preimage checks.",
+        "User HEAD/index/settings and unrelated files are preserved.",
+        "Patch supports ordinary text/binary/mode/add/delete changes and rejects unsupported path types.",
+        "Durable journal supports idempotent guarded recovery without overwriting concurrent third values."
+      ],
+      "targeted_command": "CSTACK_TEST_RUNNER=docker node --test --test-concurrency=1 test/delivery.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "DELIVERY-01",
+            "DELIVERY-02",
+            "DELIVERY-03",
+            "DELIVERY-04",
+            "DELIVERY-05",
+            "DELIVERY-06",
+            "DELIVERY-07",
+            "DELIVERY-08",
+            "DELIVERY-09",
+            "DELIVERY-10",
+            "DELIVERY-11",
+            "DELIVERY-12"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C14",
+      "title": "Required pinned integration and portability CI",
+      "release": "0.4.0",
+      "order": 15,
+      "status": "validated",
+      "depends_on": [
+        "C02",
+        "C03",
+        "C08",
+        "C13"
+      ],
+      "spec_sections": [
+        "16.1"
+      ],
+      "files": [
+        ".github/workflows/ci.yml",
+        "scripts/test-bench-ci.py",
+        "bench/test_harbor_contracts.py",
+        "test/ci-contracts.test.mjs",
+        "test/fixtures/upgrade/environments/"
+      ],
+      "acceptance_ids": [
+        "CI-01",
+        "CI-02",
+        "CI-03",
+        "CI-04",
+        "CI-05"
+      ],
+      "acceptance": [
+        "Pinned Harbor API tests cannot silently skip in required CI.",
+        "Real adapter images and clean package relocation run without model credentials.",
+        "Analysis portability includes Linux/macOS and Node 22/24.",
+        "Native discovery checks current skill IDs; C16 then enforces all four final IDs."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/ci-contracts.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "CI-01",
+            "CI-02",
+            "CI-03",
+            "CI-04",
+            "CI-05"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C15",
+      "title": "Journey telemetry and reproducible evaluation harness",
+      "release": "0.4.0",
+      "order": 16,
+      "status": "validated",
+      "depends_on": [
+        "C02",
+        "C09",
+        "C10",
+        "C12",
+        "C13"
+      ],
+      "spec_sections": [
+        "17"
+      ],
+      "files": [
+        "bench/journey.py",
+        "bench/test_journey.py",
+        "bench/journey-cases/",
+        "bench/native_usage.py",
+        "src/core.mjs",
+        "src/progress.mjs",
+        "src/delivery.mjs",
+        "docs/UPGRADE_EVALUATION.md"
+      ],
+      "acceptance_ids": [
+        "BENCH-01",
+        "BENCH-02",
+        "BENCH-03",
+        "BENCH-04",
+        "BENCH-05",
+        "BENCH-06",
+        "BENCH-07",
+        "BENCH-08"
+      ],
+      "acceptance": [
+        "Offline fixtures distinguish scripted correctness from real model performance.",
+        "Phases, missing usage, pending review and delivery are counted honestly.",
+        "Fresh experiments freeze schedule/identities/budget before admissions.",
+        "Human study cannot be replaced with AI-simulated user claims."
+      ],
+      "targeted_command": ".bench-venv/bin/python -m unittest bench.test_journey -v",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "BENCH-01",
+            "BENCH-02",
+            "BENCH-03",
+            "BENCH-04",
+            "BENCH-05",
+            "BENCH-06",
+            "BENCH-07",
+            "BENCH-08"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C16",
+      "title": "Package four skills and update product documentation",
+      "release": "0.4.0",
+      "order": 17,
+      "status": "validated",
+      "depends_on": [
+        "C04",
+        "C05",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C13",
+        "C14",
+        "C15"
+      ],
+      "spec_sections": [
+        "16.2"
+      ],
+      "files": [
+        "plugin/skills/cstack/SKILL.md",
+        "plugin/skills/cstack/references/contracts.md",
+        "plugin/skills/graph-map/SKILL.md",
+        "plugin/skills/stack-analysis/SKILL.md",
+        "plugin/skills/impact-analysis/SKILL.md",
+        "plugin/skills/impact-analysis/scripts/impact.mjs",
+        "scripts/build-plugin.mjs",
+        "test/plugin.test.mjs",
+        "README.md",
+        "docs/CONTRACT.md",
+        "docs/CODEX_PLUGIN.md",
+        "docs/PROJECT_ANALYSIS.md",
+        "docs/SECURITY.md",
+        "docs/VALIDATION.md",
+        "docs/SETUP.md",
+        "docs/REVIEW_AND_DELIVERY.md",
+        "docs/IMPACT.md"
+      ],
+      "acceptance_ids": [
+        "PLUGIN-01",
+        "PLUGIN-02",
+        "PLUGIN-03",
+        "PLUGIN-04"
+      ],
+      "acceptance": [
+        "Three existing skill IDs remain and impact-analysis is discoverable.",
+        "Installed relocated bundle is self-contained.",
+        "Documentation and skill behavior follow shipped features and real approval/evidence rules."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/plugin.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "PLUGIN-01",
+            "PLUGIN-02",
+            "PLUGIN-03",
+            "PLUGIN-04"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "C17",
+      "title": "Validate and prepare release 0.4.0",
+      "release": "0.4.0",
+      "order": 18,
+      "status": "validated",
+      "depends_on": [
+        "C00",
+        "C01",
+        "C02",
+        "C03",
+        "C04",
+        "C05",
+        "C06",
+        "C07",
+        "C08",
+        "C09",
+        "C10",
+        "C11",
+        "C12",
+        "C13",
+        "C14",
+        "C15",
+        "C16"
+      ],
+      "spec_sections": [
+        "19.3",
+        "19.4"
+      ],
+      "files": [
+        "scripts/validate-upgrade.mjs",
+        "package.json",
+        "plugin/plugin.json",
+        "plugin/.codex-plugin/plugin.json",
+        "docs/VALIDATION.md",
+        "docs/UPGRADE_EVALUATION.md"
+      ],
+      "acceptance_ids": [
+        "RELEASE04-01",
+        "RELEASE04-02",
+        "RELEASE04-03",
+        "RELEASE04-04",
+        "RELEASE04-05"
+      ],
+      "acceptance": [
+        "All functional requirements pass in clean export and relocated installed bundle.",
+        "All 12 deterministic journeys have their expected outcomes.",
+        "Versions/resource manifests agree at 0.4.0.",
+        "Performance and human-study status is explicit; no unmeasured claim is published.",
+        "Normal-profile installation/publication/push use actual session authorization, not plan approval."
+      ],
+      "targeted_command": "node scripts/validate-upgrade.mjs --release 0.4.0",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "RELEASE04-01",
+            "RELEASE04-02",
+            "RELEASE04-03",
+            "RELEASE04-04",
+            "RELEASE04-05"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "D01",
+      "title": "Capture dirty projects without modifying original work",
+      "release": "0.5.0",
+      "order": 19,
+      "status": "validated",
+      "depends_on": [
+        "C17"
+      ],
+      "spec_sections": [
+        "18.1"
+      ],
+      "files": [
+        "src/source-capture.mjs",
+        "src/snapshot.mjs",
+        "src/contracts.mjs",
+        "src/core.mjs",
+        "src/job-plan.mjs",
+        "test/source-capture.test.mjs"
+      ],
+      "acceptance_ids": [
+        "DIRTY-01",
+        "DIRTY-02",
+        "DIRTY-03",
+        "DIRTY-04",
+        "DIRTY-05",
+        "DIRTY-07",
+        "DIRTY-09",
+        "DIRTY-11"
+      ],
+      "acceptance": [
+        "Explicit working-copy mode captures source/index/HEAD as separate identities.",
+        "Overlay in private detached worktree matches captured files.",
+        "Original staged/unstaged/untracked data is preserved.",
+        "Unsupported or concurrently changing source state is rejected without stashing/committing."
+      ],
+      "targeted_command": "node --test --test-concurrency=1 test/source-capture.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "DIRTY-01",
+            "DIRTY-02",
+            "DIRTY-03",
+            "DIRTY-04",
+            "DIRTY-05",
+            "DIRTY-07",
+            "DIRTY-09",
+            "DIRTY-11"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "D02",
+      "title": "Apply only cStack delta to unchanged dirty origin",
+      "release": "0.5.0",
+      "order": 20,
+      "status": "validated",
+      "depends_on": [
+        "D01",
+        "C13"
+      ],
+      "spec_sections": [
+        "18.2"
+      ],
+      "files": [
+        "src/delivery.mjs",
+        "src/source-capture.mjs",
+        "src/cli.mjs",
+        "test/dirty-delivery.test.mjs",
+        "docs/REVIEW_AND_DELIVERY.md"
+      ],
+      "acceptance_ids": [
+        "DIRTY-03",
+        "DIRTY-04",
+        "DIRTY-05",
+        "DIRTY-06",
+        "DIRTY-07",
+        "DIRTY-08",
+        "DIRTY-10",
+        "DIRTY-12"
+      ],
+      "acceptance": [
+        "Patch excludes pre-existing user changes.",
+        "Original staging remains unchanged; cStack delta is unstaged.",
+        "Any intervening included source/index/HEAD change blocks apply.",
+        "Recovery never overwrites concurrent third-value data."
+      ],
+      "targeted_command": "CSTACK_TEST_RUNNER=docker node --test --test-concurrency=1 test/dirty-delivery.test.mjs",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "DIRTY-03",
+            "DIRTY-04",
+            "DIRTY-05",
+            "DIRTY-06",
+            "DIRTY-07",
+            "DIRTY-08",
+            "DIRTY-10",
+            "DIRTY-12"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    },
+    {
+      "id": "D03",
+      "title": "Validate and prepare release 0.5.0",
+      "release": "0.5.0",
+      "order": 21,
+      "status": "validated",
+      "depends_on": [
+        "D01",
+        "D02",
+        "C17"
+      ],
+      "spec_sections": [
+        "19.3",
+        "19.5"
+      ],
+      "files": [
+        "scripts/validate-upgrade.mjs",
+        "package.json",
+        "plugin/plugin.json",
+        "plugin/.codex-plugin/plugin.json",
+        "plugin/skills/cstack/SKILL.md",
+        "README.md",
+        "docs/SETUP.md",
+        "docs/REVIEW_AND_DELIVERY.md",
+        "docs/CODEX_PLUGIN.md",
+        "docs/VALIDATION.md"
+      ],
+      "acceptance_ids": [
+        "RELEASE05-01",
+        "RELEASE05-02",
+        "RELEASE05-03"
+      ],
+      "acceptance": [
+        "All dirty preservation/recovery tests pass alongside 0.4 regressions.",
+        "Native installed plugin exercises a real dirty fixture with scripted worker.",
+        "Version 0.5.0 documentation states strict drift refusal and clean default."
+      ],
+      "targeted_command": "node scripts/validate-upgrade.mjs --release 0.5.0",
+      "required_evidence": [
+        "source revision or diff digest",
+        "test command and exit code",
+        "pass/fail/skip counts",
+        "artifact locations and SHA-256",
+        "material limitations"
+      ],
+      "evidence": [
+        {
+          "scope": "Executed functional acceptance; no live-model or human-study claim",
+          "report": "validation/upgrade-0.5.0.json",
+          "acceptance_ids": [
+            "RELEASE05-01",
+            "RELEASE05-02",
+            "RELEASE05-03"
+          ],
+          "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "release": "0.5.0",
+    "functional": "PASSED",
+    "model_performance": "NOT_RUN",
+    "human_usability": "NOT_RUN",
+    "report": "validation/upgrade-0.5.0.json",
+    "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb"
+  }
+}

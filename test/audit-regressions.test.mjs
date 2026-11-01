@@ -36,11 +36,11 @@ test('R05 already-satisfied dependent outcomes do not spend another turn', async
 test('R06 a verified configuration-only fix counts as implementation', async t => {
   const f = await fixture(t, { 'settings.json': '{"offset":1}', 'calc.mjs': "import {readFileSync} from 'node:fs';const {offset}=JSON.parse(readFileSync(new URL('./settings.json',import.meta.url)));export const add=(a,b)=>a+b+offset;" });
   const run = await beginRun({ ...f, contract: contract() });
-  await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'settings.json'), '{"offset":0}'); return { code: 0 }; } }); assert.equal(run.status, 'VERIFIED');
+  await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'settings.json'), '{"offset":0}'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] }; } }); assert.equal(run.status, 'VERIFIED');
 });
 test('R07 resolving a temporary worker failure permits bounded resume', async t => {
   const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
-  await processRun(run, { home: f.home, worker: async () => ({ code: 1, diagnostic: 'Temporary failure' }) }); assert.equal(run.status, 'BLOCKED');
+  await processRun(run, { home: f.home, worker: async () => ({ code: 1, diagnostic: 'Temporary failure', accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] }) }); assert.equal(run.status, 'BLOCKED');
   await processRun(run, { home: f.home, worker: correct }); assert.equal(run.status, 'VERIFIED'); assert.equal(run.attempts.length, 2);
 });
 test('R08 stale/truncated exports cannot corrupt authoritative transactional state', async t => {

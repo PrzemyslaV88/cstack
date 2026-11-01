@@ -107,3 +107,12 @@ flagged. The scan is not an atomic whole-project snapshot, and it never awards a
 repair `VERIFIED` status. Error traces are limited to regular UTF-8 files of at
 most 512 KB. No network requests, automatic dependency installs, provider fallback
 or human approvals are part of analysis.
+
+
+## Scoped inventories and impact
+
+Stack reports separate application, test, example and benchmark scopes. A package
+mentioned only in a lockfile is labelled lockfile-only. Declarations and lexical
+imports do not prove execution or production use. The impact-analysis skill follows
+reverse imports and reports candidate tests, historical deletion edges and cycles;
+see [IMPACT.md](IMPACT.md). Analysis stays bounded and reports partial coverage.

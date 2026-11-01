@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cStack frozen job plan v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "ready": {
+      "type": "boolean"
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "profile_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "environment_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "origin": {
+      "type": "object",
+      "properties": {
+        "root_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "index_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "inventory_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_mode": {
+          "enum": [
+            "clean",
+            "working-copy"
+          ]
+        },
+        "ref": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "root_id",
+        "head",
+        "index_digest",
+        "inventory_digest",
+        "source_mode",
+        "ref"
+      ],
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reasoning": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "context_policy": {
+      "enum": [
+        "evidence-v1",
+        "filename-v1"
+      ]
+    },
+    "versions": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "const": 1
+        },
+        "context": {
+          "const": "evidence-v1"
+        },
+        "adapters": {
+          "const": 1
+        },
+        "profile": {
+          "const": 1
+        }
+      },
+      "required": [
+        "plan",
+        "context",
+        "adapters",
+        "profile"
+      ],
+      "additionalProperties": false
+    },
+    "verifier_identity": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "baseline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 100
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "ready",
+    "code",
+    "contract_digest",
+    "profile_digest",
+    "environment_digest",
+    "origin",
+    "model",
+    "reasoning",
+    "context_policy",
+    "versions",
+    "verifier_identity",
+    "baseline",
+    "next_action"
+  ],
+  "additionalProperties": false
+}

@@ -39,3 +39,19 @@ No automatic image pull, network dependency installation, billable API fallback,
 - https://docs.docker.com/engine/containers/run/
 - https://nodejs.org/api/test.html
 - https://git-scm.com/docs/git-worktree
+
+
+## Upgrade boundaries
+
+Dependency preparation uses explicit frozen Docker plans and never host installs.
+Test adapters execute in disposable scratch copies with image-owned dependencies;
+source snapshots remain read-only. Reporter output is not cryptographic proof against
+hostile candidate code and cannot by itself grant VERIFIED.
+
+Delivery uses a private Git directory/index, binary/full-index patches, frozen
+preimages and durable backups. Target-local filter configuration is not used for
+apply. Untracked/ignored collisions, unsupported path types, stale evidence and source
+drift stop delivery. Recovery never automatically overwrites a third-value edit.
+The delivery lock is cooperative; avoid concurrent editors during multi-file apply.
+Review artifacts contain source and should be stored privately. HTML is escaped,
+self-contained, has no scripts or remote resources, and is not an approval interface.

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "cases": [
+    "flask-5014",
+    "sympy-12481",
+    "sympy-24539",
+    "pytest-7236",
+    "sphinx-9230"
+  ],
+  "model": "gpt-6.1-sol",
+  "codex_version": "0.163.0",
+  "rows": [
+    {
+      "workflow": "cStack 0.5",
+      "mode": "single-agent",
+      "date": "2026-11-02",
+      "passes": 5,
+      "tokens": 867374,
+      "cached_input_tokens": 763392,
+      "task_seconds": 346.449957
+    },
+    {
+      "workflow": "pstack (Codex adaptation)",
+      "mode": "single-agent",
+      "date": "2026-11-01",
+      "passes": 5,
+      "tokens": 2051785,
+      "cached_input_tokens": 1852032,
+      "task_seconds": 485.348769
+    },
+    {
+      "workflow": "cStack 0.5",
+      "mode": "multi-agent",
+      "date": "2026-11-02",
+      "passes": 5,
+      "tokens": 3071947,
+      "cached_input_tokens": 2737792,
+      "task_seconds": 484.49384499999996
+    },
+    {
+      "workflow": "pstack (Codex adaptation)",
+      "mode": "multi-agent",
+      "date": "2026-11-01",
+      "passes": 5,
+      "tokens": 7205517,
+      "cached_input_tokens": 6582656,
+      "task_seconds": 630.111892
+    }
+  ],
+  "sources": {
+    "cstack": "2026-11-02-cstack-0.5-results.json",
+    "pstack": "2026-11-01-results.json"
+  },
+  "source_identities": {
+    "work_directory": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/work-both",
+    "source_archive": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/released-source.tar",
+    "source_archive_sha256": "d83c0f495260308f2bde14a461cabde9b6d59dedfa553fd175e6f9f130e5e1fd",
+    "benchmark_runtime_archive": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/benchmark-runtime.tar",
+    "benchmark_runtime_sha256": "cd822226ce0d4e62ede00320afae548b4f8fba512f209ced829af8427f9d278c",
+    "benchmark_transport_patch": "/Volumes/CStack-Comparison/cstack-0.5-single-20261102/benchmark-transport.patch",
+    "implementation_digest": "c8c2e156e5af84587a011a8b0534394f982d4312cb84994243b9f4eb05ee166c",
+    "runtime_digest": "c09b18cce33473082a84a71e53ba195415a7c17e3ddc07476152dc89e8cd579a",
+    "historical_sha256": "9203089e960f694e04274cc17e660b2d4ec113ca236ca44fea4f151dfd94ac5a"
+  },
+  "limits": [
+    "One trial per workflow per bug; historical comparison with workflow-specific reasoning and orchestration settings.",
+    "Tokens include cached input once and every parent/helper; not billed cost.",
+    "Task time excludes provisioning and private grading.",
+    "All ten cStack candidates passed private tests and await human review of protected test changes.",
+    "Multi-agent cStack is an experimental benchmark adapter; installed repair skill uses one coding worker."
+  ]
+}

@@ -1,0 +1,1289 @@
+{
+  "schema_version": 1,
+  "version": "0.5.0",
+  "functional": "PASSED",
+  "source_digest": "b7e8aea431498853b781e18a518bed7fc9008d66494b9b2662a60d0fab14bdbb",
+  "source_archive_sha256": "02530152d1af670725c38e10023492c023536a7844ca88e7a2ed176974b66ce7",
+  "core": {
+    "tests": 168,
+    "failed": 0,
+    "passed": 168,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "topLevel": 168,
+    "suites": 0
+  },
+  "benchmark": {
+    "schema_version": 1,
+    "kind": "benchmark-tests",
+    "tests": 90,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "harbor_commit": "5eb713ff9500daced4e143b98765a7c732744a1b",
+    "passed": true
+  },
+  "offline_grader": {
+    "tests": 4,
+    "failures": 0,
+    "skipped": 0
+  },
+  "syntax": "Syntax checked 85 JavaScript modules.",
+  "required_acceptance_ids": 144,
+  "coverage": [
+    {
+      "id": "BASE-01",
+      "status": "PASSED",
+      "tests": [
+        "BASE-01 BASE-03: preserved pre-change command output and source identity remain auditable"
+      ]
+    },
+    {
+      "id": "BASE-02",
+      "status": "PASSED",
+      "tests": [
+        "BASE-02 SCHEMA-01: original schema-2 normalization and hash stay unchanged"
+      ]
+    },
+    {
+      "id": "BASE-03",
+      "status": "PASSED",
+      "tests": [
+        "BASE-01 BASE-03: preserved pre-change command output and source identity remain auditable"
+      ]
+    },
+    {
+      "id": "SCHEMA-01",
+      "status": "PASSED",
+      "tests": [
+        "BASE-02 SCHEMA-01: original schema-2 normalization and hash stay unchanged"
+      ]
+    },
+    {
+      "id": "SCHEMA-02",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_upgrade_schemas.UpgradeSchemaTests.test_SCHEMA_02_new_artifact_schemas_share_structural_corpus",
+        "SCHEMA-02: canonical identities ignore key insertion order, preserve array order"
+      ]
+    },
+    {
+      "id": "SCHEMA-03",
+      "status": "PASSED",
+      "tests": [
+        "SCHEMA-03: schema 3 is additive, strict, and defaults to clean evidence context"
+      ]
+    },
+    {
+      "id": "SCHEMA-04",
+      "status": "PASSED",
+      "tests": [
+        "SCHEMA-04 SCHEMA-05: reject unsafe, unknown, oversized and unsupported contract inputs"
+      ]
+    },
+    {
+      "id": "SCHEMA-05",
+      "status": "PASSED",
+      "tests": [
+        "SCHEMA-04 SCHEMA-05: reject unsafe, unknown, oversized and unsupported contract inputs"
+      ]
+    },
+    {
+      "id": "USAGE-01",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-01: complete token vectors count subsets once"
+      ]
+    },
+    {
+      "id": "USAGE-02",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-02 USAGE-03: missing, malformed, negative and overflowing counters are not free"
+      ]
+    },
+    {
+      "id": "USAGE-03",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-02 USAGE-03: missing, malformed, negative and overflowing counters are not free"
+      ]
+    },
+    {
+      "id": "USAGE-04",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-04: duplicate terminal events are ambiguous protocol"
+      ]
+    },
+    {
+      "id": "USAGE-05",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-05 USAGE-06: missing accounting stops a correction and survives resume"
+      ]
+    },
+    {
+      "id": "USAGE-06",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-05 USAGE-06: missing accounting stops a correction and survives resume"
+      ]
+    },
+    {
+      "id": "USAGE-07",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-07: a passing candidate can retain truthful unknown accounting"
+      ]
+    },
+    {
+      "id": "USAGE-08",
+      "status": "PASSED",
+      "tests": [
+        "USAGE-08: native delta records sum once and invalid attempts block admission"
+      ]
+    },
+    {
+      "id": "CLI-01",
+      "status": "PASSED",
+      "tests": [
+        "CLI-01 CLI-02 CLI-03: analysis/help are independent of SQLite, repair state and external tools",
+        "CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result"
+      ]
+    },
+    {
+      "id": "CLI-02",
+      "status": "PASSED",
+      "tests": [
+        "CLI-01 CLI-02 CLI-03: analysis/help are independent of SQLite, repair state and external tools",
+        "CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result"
+      ]
+    },
+    {
+      "id": "CLI-03",
+      "status": "PASSED",
+      "tests": [
+        "CLI-01 CLI-02 CLI-03: analysis/help are independent of SQLite, repair state and external tools",
+        "CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result"
+      ]
+    },
+    {
+      "id": "CLI-04",
+      "status": "PASSED",
+      "tests": [
+        "CLI-04: per-command options reject flags that would otherwise be ignored",
+        "CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result"
+      ]
+    },
+    {
+      "id": "SCOPE-01",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-01 SCOPE-02 SCOPE-03 SCOPE-04: manifest scopes prevent benchmark frameworks becoming application dependencies"
+      ]
+    },
+    {
+      "id": "SCOPE-02",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-01 SCOPE-02 SCOPE-03 SCOPE-04: manifest scopes prevent benchmark frameworks becoming application dependencies"
+      ]
+    },
+    {
+      "id": "SCOPE-03",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-01 SCOPE-02 SCOPE-03 SCOPE-04: manifest scopes prevent benchmark frameworks becoming application dependencies"
+      ]
+    },
+    {
+      "id": "SCOPE-04",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-01 SCOPE-02 SCOPE-03 SCOPE-04: manifest scopes prevent benchmark frameworks becoming application dependencies"
+      ]
+    },
+    {
+      "id": "SCOPE-05",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-05 SCOPE-06: malformed manifests remain warnings and scoped results are stable"
+      ]
+    },
+    {
+      "id": "SCOPE-06",
+      "status": "PASSED",
+      "tests": [
+        "SCOPE-05 SCOPE-06: malformed manifests remain warnings and scoped results are stable"
+      ]
+    },
+    {
+      "id": "REVIEW-01",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval"
+      ]
+    },
+    {
+      "id": "REVIEW-02",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval",
+        "REVIEW-02: full review diff preserves add/delete/binary and executable metadata"
+      ]
+    },
+    {
+      "id": "REVIEW-03",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-03: long diff previews are bounded while full artifact retains changes"
+      ]
+    },
+    {
+      "id": "REVIEW-04",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval"
+      ]
+    },
+    {
+      "id": "REVIEW-05",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-05 REVIEW-08: changed snapshot makes a report stale and rejects old approval"
+      ]
+    },
+    {
+      "id": "REVIEW-06",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval"
+      ]
+    },
+    {
+      "id": "REVIEW-07",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval"
+      ]
+    },
+    {
+      "id": "REVIEW-08",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-05 REVIEW-08: changed snapshot makes a report stale and rejects old approval"
+      ]
+    },
+    {
+      "id": "REVIEW-09",
+      "status": "PASSED",
+      "tests": [
+        "REVIEW-01 REVIEW-02 REVIEW-04 REVIEW-06 REVIEW-07 REVIEW-09: current diff separates review, binary changes and unknown spending without approval"
+      ]
+    },
+    {
+      "id": "PROFILE-01",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-01 PROFILE-03 PROFILE-04 PROFILE-05 PROFILE-07: deterministic private discovery, source-only freshness and manifest invalidation"
+      ]
+    },
+    {
+      "id": "PROFILE-02",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-02 PROFILE-06: ambiguity and bounded conventions never execute instructions"
+      ]
+    },
+    {
+      "id": "PROFILE-03",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-01 PROFILE-03 PROFILE-04 PROFILE-05 PROFILE-07: deterministic private discovery, source-only freshness and manifest invalidation"
+      ]
+    },
+    {
+      "id": "PROFILE-04",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-01 PROFILE-03 PROFILE-04 PROFILE-05 PROFILE-07: deterministic private discovery, source-only freshness and manifest invalidation"
+      ]
+    },
+    {
+      "id": "PROFILE-05",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-01 PROFILE-03 PROFILE-04 PROFILE-05 PROFILE-07: deterministic private discovery, source-only freshness and manifest invalidation"
+      ]
+    },
+    {
+      "id": "PROFILE-06",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-02 PROFILE-06: ambiguity and bounded conventions never execute instructions"
+      ]
+    },
+    {
+      "id": "PROFILE-07",
+      "status": "PASSED",
+      "tests": [
+        "PROFILE-01 PROFILE-03 PROFILE-04 PROFILE-05 PROFILE-07: deterministic private discovery, source-only freshness and manifest invalidation"
+      ]
+    },
+    {
+      "id": "ENV-01",
+      "status": "PASSED",
+      "tests": [
+        "ENV-01 ENV-03: existing local image readiness is independently probed offline",
+        "ENV-01 ENV-02 ENV-03 ENV-09: real bounded npm preparation skips hooks and reuses its recorded image"
+      ]
+    },
+    {
+      "id": "ENV-02",
+      "status": "PASSED",
+      "tests": [
+        "ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build",
+        "ENV-01 ENV-02 ENV-03 ENV-09: real bounded npm preparation skips hooks and reuses its recorded image"
+      ]
+    },
+    {
+      "id": "ENV-03",
+      "status": "PASSED",
+      "tests": [
+        "ENV-01 ENV-03: existing local image readiness is independently probed offline",
+        "ENV-01 ENV-02 ENV-03 ENV-09: real bounded npm preparation skips hooks and reuses its recorded image"
+      ]
+    },
+    {
+      "id": "ENV-04",
+      "status": "PASSED",
+      "tests": [
+        "ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build",
+        "ENV-04 ENV-05: edited recipes and extra context files cannot reach Docker"
+      ]
+    },
+    {
+      "id": "ENV-05",
+      "status": "PASSED",
+      "tests": [
+        "ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build",
+        "ENV-04 ENV-05: edited recipes and extra context files cannot reach Docker"
+      ]
+    },
+    {
+      "id": "ENV-06",
+      "status": "PASSED",
+      "tests": [
+        "ENV-06 ENV-07: unsupported dependencies and missing images remain non-runnable"
+      ]
+    },
+    {
+      "id": "ENV-07",
+      "status": "PASSED",
+      "tests": [
+        "ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build",
+        "ENV-06 ENV-07: unsupported dependencies and missing images remain non-runnable"
+      ]
+    },
+    {
+      "id": "ENV-08",
+      "status": "PASSED",
+      "tests": [
+        "ENV-08 ADAPTER-08 ADAPTER-09: explicit pytest plugin, immutable input and dependency-link collision"
+      ]
+    },
+    {
+      "id": "ENV-09",
+      "status": "PASSED",
+      "tests": [
+        "ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build",
+        "ENV-01 ENV-02 ENV-03 ENV-09: real bounded npm preparation skips hooks and reuses its recorded image"
+      ]
+    },
+    {
+      "id": "ADAPTER-01",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-01 ADAPTER-03 ADAPTER-08 ADAPTER-09: pytest pass, teardown, skip, xfail, collection and scratch"
+      ]
+    },
+    {
+      "id": "ADAPTER-02",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-02 ADAPTER-04: Vitest pass, fail, duplicate names and unhandled errors"
+      ]
+    },
+    {
+      "id": "ADAPTER-03",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-01 ADAPTER-03 ADAPTER-08 ADAPTER-09: pytest pass, teardown, skip, xfail, collection and scratch"
+      ]
+    },
+    {
+      "id": "ADAPTER-04",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-02 ADAPTER-04: Vitest pass, fail, duplicate names and unhandled errors"
+      ]
+    },
+    {
+      "id": "ADAPTER-05",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-05 ADAPTER-06 ADAPTER-07: malformed, forged, missing, truncated and incompatible streams never pass"
+      ]
+    },
+    {
+      "id": "ADAPTER-06",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-05 ADAPTER-06 ADAPTER-07: malformed, forged, missing, truncated and incompatible streams never pass"
+      ]
+    },
+    {
+      "id": "ADAPTER-07",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-05 ADAPTER-06 ADAPTER-07: malformed, forged, missing, truncated and incompatible streams never pass"
+      ]
+    },
+    {
+      "id": "ADAPTER-08",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-01 ADAPTER-03 ADAPTER-08 ADAPTER-09: pytest pass, teardown, skip, xfail, collection and scratch",
+        "ENV-08 ADAPTER-08 ADAPTER-09: explicit pytest plugin, immutable input and dependency-link collision"
+      ]
+    },
+    {
+      "id": "ADAPTER-09",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-01 ADAPTER-03 ADAPTER-08 ADAPTER-09: pytest pass, teardown, skip, xfail, collection and scratch",
+        "ENV-08 ADAPTER-08 ADAPTER-09: explicit pytest plugin, immutable input and dependency-link collision"
+      ]
+    },
+    {
+      "id": "ADAPTER-10",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-10 ADAPTER-11: failed-first feedback stops early, success checks full current set"
+      ]
+    },
+    {
+      "id": "ADAPTER-11",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-10 ADAPTER-11: failed-first feedback stops early, success checks full current set"
+      ]
+    },
+    {
+      "id": "ADAPTER-12",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-12 PROGRESS-07: supporting tests require independent approval and resume preserves budget/history"
+      ]
+    },
+    {
+      "id": "CONTEXT-01",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-01 CONTEXT-02 CONTEXT-03 CONTEXT-04: evidence beats filename decoys and finds reverse consumers deterministically"
+      ]
+    },
+    {
+      "id": "CONTEXT-02",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-01 CONTEXT-02 CONTEXT-03 CONTEXT-04: evidence beats filename decoys and finds reverse consumers deterministically"
+      ]
+    },
+    {
+      "id": "CONTEXT-03",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-01 CONTEXT-02 CONTEXT-03 CONTEXT-04: evidence beats filename decoys and finds reverse consumers deterministically"
+      ]
+    },
+    {
+      "id": "CONTEXT-04",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-01 CONTEXT-02 CONTEXT-03 CONTEXT-04: evidence beats filename decoys and finds reverse consumers deterministically"
+      ]
+    },
+    {
+      "id": "CONTEXT-05",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-05 CONTEXT-06 CONTEXT-07: byte budgets, partial scans, line integrity and excluded secrets"
+      ]
+    },
+    {
+      "id": "CONTEXT-06",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-05 CONTEXT-06 CONTEXT-07: byte budgets, partial scans, line integrity and excluded secrets"
+      ]
+    },
+    {
+      "id": "CONTEXT-07",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-05 CONTEXT-06 CONTEXT-07: byte budgets, partial scans, line integrity and excluded secrets"
+      ]
+    },
+    {
+      "id": "CONTEXT-08",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-08 CONTEXT-09: retries emit changed excerpts only; new threads and old policy are distinct"
+      ]
+    },
+    {
+      "id": "CONTEXT-09",
+      "status": "PASSED",
+      "tests": [
+        "CONTEXT-08 CONTEXT-09: retries emit changed excerpts only; new threads and old policy are distinct"
+      ]
+    },
+    {
+      "id": "PLAN-01",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-01 PLAN-06 PLAN-07: frozen plan with spaces runs a scripted repair and refuses source drift"
+      ]
+    },
+    {
+      "id": "PLAN-02",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-02 PLAN-04 PLAN-05: missing dependencies and already passing baseline spend no worker tokens"
+      ]
+    },
+    {
+      "id": "PLAN-03",
+      "status": "PASSED",
+      "tests": [
+        "CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result"
+      ]
+    },
+    {
+      "id": "PLAN-04",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-02 PLAN-04 PLAN-05: missing dependencies and already passing baseline spend no worker tokens"
+      ]
+    },
+    {
+      "id": "PLAN-05",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-02 PLAN-04 PLAN-05: missing dependencies and already passing baseline spend no worker tokens"
+      ]
+    },
+    {
+      "id": "PLAN-06",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-01 PLAN-06 PLAN-07: frozen plan with spaces runs a scripted repair and refuses source drift"
+      ]
+    },
+    {
+      "id": "PLAN-07",
+      "status": "PASSED",
+      "tests": [
+        "PLAN-01 PLAN-06 PLAN-07: frozen plan with spaces runs a scripted repair and refuses source drift"
+      ]
+    },
+    {
+      "id": "PLAN-08",
+      "status": "PASSED",
+      "tests": [
+        "CI-04 PLAN-08: relocated installed helper prepares plan, runs scripted fix, reviews and delivers without checkout imports"
+      ]
+    },
+    {
+      "id": "IMPACT-01",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-01 IMPACT-02 IMPACT-03 IMPACT-05: bounded reverse dependencies, cycles and honest test labels"
+      ]
+    },
+    {
+      "id": "IMPACT-02",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-01 IMPACT-02 IMPACT-03 IMPACT-05: bounded reverse dependencies, cycles and honest test labels"
+      ]
+    },
+    {
+      "id": "IMPACT-03",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-01 IMPACT-02 IMPACT-03 IMPACT-05: bounded reverse dependencies, cycles and honest test labels"
+      ]
+    },
+    {
+      "id": "IMPACT-04",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-04 IMPACT-06 IMPACT-07 IMPACT-08: deletion retains baseline consumers; revisions and diagrams are bounded"
+      ]
+    },
+    {
+      "id": "IMPACT-05",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-01 IMPACT-02 IMPACT-03 IMPACT-05: bounded reverse dependencies, cycles and honest test labels"
+      ]
+    },
+    {
+      "id": "IMPACT-06",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-04 IMPACT-06 IMPACT-07 IMPACT-08: deletion retains baseline consumers; revisions and diagrams are bounded"
+      ]
+    },
+    {
+      "id": "IMPACT-07",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-04 IMPACT-06 IMPACT-07 IMPACT-08: deletion retains baseline consumers; revisions and diagrams are bounded"
+      ]
+    },
+    {
+      "id": "IMPACT-08",
+      "status": "PASSED",
+      "tests": [
+        "IMPACT-04 IMPACT-06 IMPACT-07 IMPACT-08: deletion retains baseline consumers; revisions and diagrams are bounded"
+      ]
+    },
+    {
+      "id": "PROGRESS-01",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-01 PROGRESS-02 PROGRESS-03 PROGRESS-04: truthful phases, separate JSON channel and real heartbeat interval"
+      ]
+    },
+    {
+      "id": "PROGRESS-02",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-01 PROGRESS-02 PROGRESS-03 PROGRESS-04: truthful phases, separate JSON channel and real heartbeat interval"
+      ]
+    },
+    {
+      "id": "PROGRESS-03",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-01 PROGRESS-02 PROGRESS-03 PROGRESS-04: truthful phases, separate JSON channel and real heartbeat interval"
+      ]
+    },
+    {
+      "id": "PROGRESS-04",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-01 PROGRESS-02 PROGRESS-03 PROGRESS-04: truthful phases, separate JSON channel and real heartbeat interval"
+      ]
+    },
+    {
+      "id": "PROGRESS-05",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-05: stopping a watcher never cancels a worker and polls at one second"
+      ]
+    },
+    {
+      "id": "PROGRESS-06",
+      "status": "PASSED",
+      "tests": [
+        "PROGRESS-06: run listing is scoped, bounded and ordered"
+      ]
+    },
+    {
+      "id": "PROGRESS-07",
+      "status": "PASSED",
+      "tests": [
+        "ADAPTER-12 PROGRESS-07: supporting tests require independent approval and resume preserves budget/history"
+      ]
+    },
+    {
+      "id": "DELIVERY-01",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-01 DELIVERY-02 DELIVERY-08 DELIVERY-12: binary/full patch, preview and apply preserve original index"
+      ]
+    },
+    {
+      "id": "DELIVERY-02",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-01 DELIVERY-02 DELIVERY-08 DELIVERY-12: binary/full patch, preview and apply preserve original index"
+      ]
+    },
+    {
+      "id": "DELIVERY-03",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-03 DELIVERY-04 DELIVERY-06: collisions, changed originals and stale verified work block writes"
+      ]
+    },
+    {
+      "id": "DELIVERY-04",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-03 DELIVERY-04 DELIVERY-06: collisions, changed originals and stale verified work block writes"
+      ]
+    },
+    {
+      "id": "DELIVERY-05",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-05: changed internal symlinks are export-only, never applied"
+      ]
+    },
+    {
+      "id": "DELIVERY-06",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-03 DELIVERY-04 DELIVERY-06: collisions, changed originals and stale verified work block writes"
+      ]
+    },
+    {
+      "id": "DELIVERY-07",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-07: corrupted stored patch is not used for recovery"
+      ]
+    },
+    {
+      "id": "DELIVERY-08",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-01 DELIVERY-02 DELIVERY-08 DELIVERY-12: binary/full patch, preview and apply preserve original index",
+        "DELIVERY-08: delivery does not run target-local clean filters or stage repaired content"
+      ]
+    },
+    {
+      "id": "DELIVERY-09",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-09 DELIVERY-10 DELIVERY-11 DELIVERY-12: interrupted delivery preserves third values and supports explicit recovery"
+      ]
+    },
+    {
+      "id": "DELIVERY-10",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-09 DELIVERY-10 DELIVERY-11 DELIVERY-12: interrupted delivery preserves third values and supports explicit recovery",
+        "DELIVERY-10: mixed known pre/post images roll back without changing the index"
+      ]
+    },
+    {
+      "id": "DELIVERY-11",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-09 DELIVERY-10 DELIVERY-11 DELIVERY-12: interrupted delivery preserves third values and supports explicit recovery"
+      ]
+    },
+    {
+      "id": "DELIVERY-12",
+      "status": "PASSED",
+      "tests": [
+        "DELIVERY-01 DELIVERY-02 DELIVERY-08 DELIVERY-12: binary/full patch, preview and apply preserve original index",
+        "DELIVERY-09 DELIVERY-10 DELIVERY-11 DELIVERY-12: interrupted delivery preserves third values and supports explicit recovery"
+      ]
+    },
+    {
+      "id": "CI-01",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_ci_gate.RequiredCITests.test_CI_01_missing_harbor_fails_required_mode"
+      ]
+    },
+    {
+      "id": "CI-02",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_ci_gate.RequiredCITests.test_CI_02_skip_is_failure_in_required_mode"
+      ]
+    },
+    {
+      "id": "CI-03",
+      "status": "PASSED",
+      "tests": [
+        "CI-03: Docker cleanup race requires confirmed absence, never assumes removal"
+      ]
+    },
+    {
+      "id": "CI-04",
+      "status": "PASSED",
+      "tests": [
+        "CI-04 PLAN-08: relocated installed helper prepares plan, runs scripted fix, reviews and delivers without checkout imports"
+      ]
+    },
+    {
+      "id": "CI-05",
+      "status": "PASSED",
+      "tests": [
+        "CI-05 PLUGIN-01: native Codex discovers installed cStack skills in an isolated unauthenticated profile"
+      ]
+    },
+    {
+      "id": "BENCH-01",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_01_frozen_latin_schedule"
+      ]
+    },
+    {
+      "id": "BENCH-02",
+      "status": "PASSED",
+      "tests": [
+        "BENCH-02 BENCH-06 BENCH-08: experiment bridge physically validates no-op/gold without invoking a model",
+        "BENCH-02 PY01: exact scripted synthetic journey",
+        "BENCH-02 PY02: exact scripted synthetic journey",
+        "BENCH-02 PY03: exact scripted synthetic journey",
+        "BENCH-02 PY04: exact scripted synthetic journey",
+        "BENCH-02 PY05: exact scripted synthetic journey",
+        "BENCH-02 PY06: exact scripted synthetic journey",
+        "BENCH-02 JS01: exact scripted synthetic journey",
+        "BENCH-02 JS02: exact scripted synthetic journey",
+        "BENCH-02 JS03: exact scripted synthetic journey",
+        "BENCH-02 JS04: exact scripted synthetic journey",
+        "BENCH-02 JS05: exact scripted synthetic journey",
+        "BENCH-02 JS06: exact scripted synthetic journey"
+      ]
+    },
+    {
+      "id": "BENCH-03",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_03_BENCH_04_BENCH_05_failures_unknown_and_pending_review",
+        "bench.test_journey.JourneyTests.test_BENCH_03_regression_and_unknown_invocation_are_never_invented"
+      ]
+    },
+    {
+      "id": "BENCH-04",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_03_BENCH_04_BENCH_05_failures_unknown_and_pending_review",
+        "bench.test_journey.JourneyTests.test_BENCH_04_BENCH_06_model_denominator_and_missing_time",
+        "bench.test_journey_native.NativeJourneyTests.test_BENCH_04_missing_root_is_unknown_not_zero_usage",
+        "bench.test_journey_native.NativeJourneyTests.test_BENCH_04_native_tree_excludes_outer_chat_and_counts_helpers"
+      ]
+    },
+    {
+      "id": "BENCH-05",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_03_BENCH_04_BENCH_05_failures_unknown_and_pending_review",
+        "BENCH-05: pending human review remains outside delivered-fix counts"
+      ]
+    },
+    {
+      "id": "BENCH-06",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_04_BENCH_06_model_denominator_and_missing_time",
+        "bench.test_journey.JourneyTests.test_BENCH_06_leaf_phase_arithmetic_keeps_unknown",
+        "BENCH-02 BENCH-06 BENCH-08: experiment bridge physically validates no-op/gold without invoking a model",
+        "BENCH-06: measured leaf phases preserve failure time and keep human activity unknown"
+      ]
+    },
+    {
+      "id": "BENCH-07",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_07_stable_case_bootstrap"
+      ]
+    },
+    {
+      "id": "BENCH-08",
+      "status": "PASSED",
+      "tests": [
+        "bench.test_journey.JourneyTests.test_BENCH_08_no_implicit_paid_authorization",
+        "BENCH-02 BENCH-06 BENCH-08: experiment bridge physically validates no-op/gold without invoking a model"
+      ]
+    },
+    {
+      "id": "PLUGIN-01",
+      "status": "PASSED",
+      "tests": [
+        "CI-05 PLUGIN-01: native Codex discovers installed cStack skills in an isolated unauthenticated profile"
+      ]
+    },
+    {
+      "id": "PLUGIN-02",
+      "status": "PASSED",
+      "tests": [
+        "PLUGIN-02 PLUGIN-03: built plugin runs after relocation without the source checkout or global cstack"
+      ]
+    },
+    {
+      "id": "PLUGIN-03",
+      "status": "PASSED",
+      "tests": [
+        "PLUGIN-02 PLUGIN-03: built plugin runs after relocation without the source checkout or global cstack"
+      ]
+    },
+    {
+      "id": "PLUGIN-04",
+      "status": "PASSED",
+      "tests": [
+        "PLUGIN-04: unexpected files in a generated bundle are preserved and rejected"
+      ]
+    },
+    {
+      "id": "RELEASE04-01",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE04-01: Clean source archive, full core/benchmark/grader and relocated native bundle checks passed"
+      ]
+    },
+    {
+      "id": "RELEASE04-02",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE04-02: All twelve scripted journey outcomes observed"
+      ]
+    },
+    {
+      "id": "RELEASE04-03",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE04-03: Package and plugin versions/resources agree at release 0.5.0"
+      ]
+    },
+    {
+      "id": "RELEASE04-04",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE04-04: Model performance and human usability explicitly NOT_RUN; only deterministic validation executed"
+      ]
+    },
+    {
+      "id": "RELEASE04-05",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE04-05: Release script neither installs normal profile nor publishes/commits/pushes"
+      ]
+    },
+    {
+      "id": "DIRTY-01",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-01 DIRTY-06 DIRTY-07: staged user edits survive capture, patch and delivery"
+      ]
+    },
+    {
+      "id": "DIRTY-02",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-02 DIRTY-06 DIRTY-07: unstaged user edits survive capture, patch and delivery"
+      ]
+    },
+    {
+      "id": "DIRTY-03",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-03 DIRTY-06 DIRTY-07: both user edits survive capture, patch and delivery"
+      ]
+    },
+    {
+      "id": "DIRTY-04",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-04 DIRTY-05: untracked modifications and tracked deletions are part of baseline, not cStack delta"
+      ]
+    },
+    {
+      "id": "DIRTY-05",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-04 DIRTY-05: untracked modifications and tracked deletions are part of baseline, not cStack delta"
+      ]
+    },
+    {
+      "id": "DIRTY-07",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-01 DIRTY-06 DIRTY-07: staged user edits survive capture, patch and delivery",
+        "DIRTY-02 DIRTY-06 DIRTY-07: unstaged user edits survive capture, patch and delivery",
+        "DIRTY-03 DIRTY-06 DIRTY-07: both user edits survive capture, patch and delivery"
+      ]
+    },
+    {
+      "id": "DIRTY-09",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-09: second content inventory detects an edit even when paths and Git metadata stay unchanged"
+      ]
+    },
+    {
+      "id": "DIRTY-11",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-11: unsafe symlinks, submodules, sparse checkout, unmerged index, operations and case collisions refuse capture",
+        "DIRTY-11: source capture never executes repository filters or admits special files"
+      ]
+    },
+    {
+      "id": "DIRTY-06",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-01 DIRTY-06 DIRTY-07: staged user edits survive capture, patch and delivery",
+        "DIRTY-02 DIRTY-06 DIRTY-07: unstaged user edits survive capture, patch and delivery",
+        "DIRTY-03 DIRTY-06 DIRTY-07: both user edits survive capture, patch and delivery"
+      ]
+    },
+    {
+      "id": "DIRTY-08",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-08 DIRTY-10: ignored collision, included source drift, index and ref drift reject without writes"
+      ]
+    },
+    {
+      "id": "DIRTY-10",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-08 DIRTY-10: ignored collision, included source drift, index and ref drift reject without writes"
+      ]
+    },
+    {
+      "id": "DIRTY-12",
+      "status": "PASSED",
+      "tests": [
+        "DIRTY-12: interrupted dirty delivery preserves staging and concurrent third-value edits"
+      ]
+    },
+    {
+      "id": "RELEASE05-01",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE05-01: Dirty-preservation/recovery tests and all clean regressions passed"
+      ]
+    },
+    {
+      "id": "RELEASE05-02",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE05-02: native installed plugin plans and delivers a dirty fixture without altering staging"
+      ]
+    },
+    {
+      "id": "RELEASE05-03",
+      "status": "PASSED",
+      "tests": [
+        "RELEASE05-03: Version0.5 documents explicit working-copy and strict source drift refusal"
+      ]
+    }
+  ],
+  "evidence_sha256": {
+    "core-tests.jsonl": "f805e85159fa9e1e3afadbd01bcb059011c3fad1b8082b98b583251dba9d0084",
+    "benchmark-tests.jsonl": "e1152cbef99f30e9bb49f1559d0c4c4b2c17bec317cfeaf4c37ca88f0641764a",
+    "release-tests.jsonl": "a64c101a11a9b3d25c50127d72cbfa3d028d05bfd2c4ead401a203dbdfd4f135",
+    "scripted-journeys.json": "29a5aabeb090e72c33ed72d9f74669bb3d6ec9450faf47e7f216cfca447f0f93",
+    "bench-ci.json": "4f6ddf6cb08604857d9f252360ef8a12893719aabc8575ec328f69f88081611e",
+    "syntax.log": "1f44956bb08f9056f0da8abbf5d40f40267de27f7525a04147bc26c6b3474f4a",
+    "grader.log": "eb8e0df6790b32c8b1e0692186a321fa86f8915908a95e42fb4eb51d7f3353e1",
+    "bundle.log": "aade4ea35b8a58da133498f437157521d5380d596df49f7e3673c6c876e535a1"
+  },
+  "scripted_journeys": {
+    "schema_version": 1,
+    "label": "Synthetic scripted functional validation, not model performance or human usability",
+    "rows": [
+      {
+        "id": "PY01",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 1031.4714170000002,
+          "context_ms": 24.901041000000077,
+          "worker_ms": 0.488999999999578,
+          "verification_ms": 1047.322917
+        }
+      },
+      {
+        "id": "PY02",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 1337.5895830000009,
+          "context_ms": 15.345375000000786,
+          "worker_ms": 0.403334000000541,
+          "verification_ms": 1335.5596659999992
+        }
+      },
+      {
+        "id": "PY03",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 766.9847090000003,
+          "context_ms": 14.635834000000614,
+          "worker_ms": 0.2840829999986454,
+          "verification_ms": 840.2432079999999
+        }
+      },
+      {
+        "id": "PY04",
+        "outcome": "NEEDS_MANUAL_VERIFICATION",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": false,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 782.1747910000013,
+          "context_ms": 14.304457999998704,
+          "worker_ms": 0.4737920000006852,
+          "verification_ms": 788.6265840000015
+        }
+      },
+      {
+        "id": "PY05",
+        "outcome": "SETUP_PREREQUISITE",
+        "worker_invocations": 0,
+        "graded": null,
+        "delivered": false
+      },
+      {
+        "id": "PY06",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": false,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 972.4023749999978,
+          "context_ms": 14.584249999999884,
+          "worker_ms": 0.495667000002868,
+          "verification_ms": 1026.5270420000015
+        }
+      },
+      {
+        "id": "JS01",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 981.7362499999981,
+          "context_ms": 15.567708000002312,
+          "worker_ms": 0.32924999999886495,
+          "verification_ms": 996.0007499999992
+        }
+      },
+      {
+        "id": "JS02",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 1269.379458000003,
+          "context_ms": 14.519916999997804,
+          "worker_ms": 0.3821250000000873,
+          "verification_ms": 1227.8793750000004
+        }
+      },
+      {
+        "id": "JS03",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": true,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 964.7074580000044,
+          "context_ms": 14.112832999999227,
+          "worker_ms": 0.3080829999962589,
+          "verification_ms": 985.1003749999945
+        }
+      },
+      {
+        "id": "JS04",
+        "outcome": "NEEDS_MANUAL_VERIFICATION",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": false,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 1027.918749999997,
+          "context_ms": 14.626791000002413,
+          "worker_ms": 0.5862909999996191,
+          "verification_ms": 1023.2930830000041
+        }
+      },
+      {
+        "id": "JS05",
+        "outcome": "SETUP_PREREQUISITE",
+        "worker_invocations": 0,
+        "graded": null,
+        "delivered": false
+      },
+      {
+        "id": "JS06",
+        "outcome": "VERIFIED",
+        "worker_invocations": 1,
+        "graded": true,
+        "delivered": false,
+        "source_selected": true,
+        "test_selected": true,
+        "accounting": "scripted-zero",
+        "phase_ms": {
+          "baseline_ms": 982.4847500000033,
+          "context_ms": 13.719084000003932,
+          "worker_ms": 0.5042909999974654,
+          "verification_ms": 1007.114916999999
+        }
+      }
+    ]
+  },
+  "model_performance": "NOT_RUN",
+  "human_usability": "NOT_RUN",
+  "remote_ci": "NOT_RUN",
+  "normal_profile_install": "NOT_RUN",
+  "publication": "NOT_RUN",
+  "limitations": [
+    "Local macOS/Node24/real Docker validation; remote CI matrix configured but not claimed executed.",
+    "Scripted workers prove controller behavior, not model repair performance or better human usability.",
+    "Earlier 0.5 candidate gate had a pre-worker journey interruption and resulting count failure; full raw failed evidence retained locally. Final gate is a fresh full run.",
+    "Concurrent editors are not an OS-atomic multi-file transaction; strict source drift and recovery checks apply."
+  ]
+}

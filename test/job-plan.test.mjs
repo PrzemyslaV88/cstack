@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {writeFile,readFile} from 'node:fs/promises';import {join} from 'node:path';import {fixture,probe,correct} from './helpers/fixture.mjs';import {setupProject} from '../src/setup.mjs';import {createJobPlan,runJobPlan} from '../src/job-plan.mjs';
+async function prepared(t,passing=false){const f=await fixture(t,{'package.json':'{"scripts":{"test":"node --test"}}','tests/add.test.mjs':"import test from 'node:test';test('existing',()=>{});",...(passing?{'calc.mjs':'export const add=(a,b)=>a+b;\n'}:{})});const setup=await setupProject(f.repo,{image:'node:22.16.0-bookworm-slim',home:f.home});assert.equal(setup.ready,true,JSON.stringify(setup));const acceptance=join(f.root,'acceptance.json');await writeFile(acceptance,JSON.stringify({criteria:[probe],policy:'lean'}));return {...f,profile:setup.profile,acceptance};}
+test('PLAN-01 PLAN-06 PLAN-07: frozen plan with spaces runs a scripted repair and refuses source drift',async t=>{
+ const f=await prepared(t),plan=await createJobPlan({repo:f.repo,profilePath:f.profile,acceptancePath:f.acceptance,goal:'Repair incorrect addition',output:join(f.root,'plan with spaces'),home:f.home});assert.equal(plan.ready,true,JSON.stringify(plan));
+ let calls=0;const r=await runJobPlan(plan.plan,plan.digest,{home:f.home,worker:async x=>{calls++;return correct(x);}});assert.equal(calls,1);assert.equal(r.status,'VERIFIED',r.reason);assert.ok(r.attempts[0].context_digest);assert.equal(r.plan_digest,plan.digest);
+ await assert.rejects(runJobPlan(plan.plan,'0'.repeat(64),{home:f.home}),{code:'PLAN_CHANGED'});await writeFile(join(f.repo,'calc.mjs'),'changed');await assert.rejects(runJobPlan(plan.plan,plan.digest,{home:f.home}),{code:'PLAN_STALE'});
+});
+test('PLAN-02 PLAN-04 PLAN-05: missing dependencies and already passing baseline spend no worker tokens',async t=>{
+ const f=await prepared(t,true);const plan=await createJobPlan({repo:f.repo,profilePath:f.profile,acceptancePath:f.acceptance,goal:'Repair incorrect addition',output:join(f.root,'plan'),home:f.home});assert.equal(plan.code,'ALREADY_SATISFIED');assert.equal(plan.ready,false);
+ await assert.rejects(runJobPlan(plan.plan,plan.digest,{home:f.home,worker:()=>{throw Error('must not run');}}),{code:'PLAN_NOT_READY'});
+ const unavailable=await setupProject(f.repo,{image:'cstack-does-not-exist:fixture',home:f.home});assert.equal(unavailable.ready,false);assert.equal(unavailable.code,'IMAGE_MISSING');
+ await writeFile(f.acceptance,JSON.stringify({criteria:[],unexpected:true}));await assert.rejects(createJobPlan({repo:f.repo,profilePath:f.profile,acceptancePath:f.acceptance,goal:'Repair incorrect addition',output:join(f.root,'invalid'),home:f.home}),/Unknown acceptance/);
+});

@@ -51,3 +51,12 @@ Without it, state is under `~/.local/state/cstack`. Use the same home for status
 resume, evidence and export. A failed check does not reset budgets or authorize
 changing expected results. A clean already-passing baseline is reported as
 `ALREADY_SATISFIED`, not as a newly demonstrated fix.
+
+For guided plans, write an acceptance file containing `criteria` and optional
+`model`, `reasoning`, `attempt_limit`, `budget`, `type`, `policy`,
+`implementation_paths`, `tasks`, `context` and `approved_test_fixtures`.
+The plan supplies the goal, schema version, runner image and project identities.
+Do not copy a complete legacy contract's runner/workspace fields into acceptance.
+Concrete public probes stay independent of edits; discovered project tests are
+additional supporting checks. Private grader expectations never belong in worker
+context. See the bundled runtime CONTRACT.md for schema details.

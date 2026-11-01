@@ -1,0 +1,84 @@
+test_cancelled_turn_not_counted_as_complete (bench.test_adapters.AdapterTests.test_cancelled_turn_not_counted_as_complete) ... ok
+test_completed_turns_summed_once (bench.test_adapters.AdapterTests.test_completed_turns_summed_once) ... ok
+test_cstack_multiagent_charges_helpers_and_refuses_missing_rollouts (bench.test_adapters.AdapterTests.test_cstack_multiagent_charges_helpers_and_refuses_missing_rollouts) ... ok
+test_cstack_multiagent_mapping_preserves_checks_and_requires_known_policy (bench.test_adapters.AdapterTests.test_cstack_multiagent_mapping_preserves_checks_and_requires_known_policy) ... ok
+test_cstack_multiagent_public_goal_has_no_conflicting_agent_ban (bench.test_adapters.AdapterTests.test_cstack_multiagent_public_goal_has_no_conflicting_agent_ban) ... ok
+test_cstack_uses_same_model_config (bench.test_adapters.AdapterTests.test_cstack_uses_same_model_config) ... ok
+test_missing_one_turn_prevents_complete_usage (bench.test_adapters.AdapterTests.test_missing_one_turn_prevents_complete_usage) ... ok
+test_multiagent_arms_enable_real_delegation (bench.test_adapters.AdapterTests.test_multiagent_arms_enable_real_delegation) ... ok
+test_native_config_is_dict_and_forces_chatgpt (bench.test_adapters.AdapterTests.test_native_config_is_dict_and_forces_chatgpt) ... ok
+test_no_api_fallback (bench.test_adapters.AdapterTests.test_no_api_fallback) ... ok
+test_pipeline_gets_group_deadline (bench.test_adapters.AdapterTests.test_pipeline_gets_group_deadline) ... ok
+test_pstack_label_is_honest (bench.test_adapters.AdapterTests.test_pstack_label_is_honest) ... ok
+test_single_worker_disables_both_agent_features (bench.test_adapters.AdapterTests.test_single_worker_disables_both_agent_features) ... ok
+test_every_generated_job_passes_actual_agent_preflight (bench.test_harbor_contracts.HarborContractTests.test_every_generated_job_passes_actual_agent_preflight) ... /Volumes/T7 Shield/Projects/cstack-v0.2/.bench-venv/lib/python3.12/site-packages/harbor/agents/installed/base.py:635: DeprecationWarning: Agent 'PlainCodex' declares deprecated capability flags (SUPPORTS_ATIF); declare capabilities = AgentCapabilities(...) instead. Legacy flags will be removed in the next major release.
+  super().__init_subclass__(**kwargs)
+ok
+test_missing_comparison_contract_is_rejected (bench.test_harbor_contracts.HarborContractTests.test_missing_comparison_contract_is_rejected) ... ok
+test_unknown_options_remain_rejected (bench.test_harbor_contracts.HarborContractTests.test_unknown_options_remain_rejected) ... ok
+test_combined_container_stream_preserves_json_and_warning (bench.test_harbor_contracts.PublicProbeTests.test_combined_container_stream_preserves_json_and_warning) ... ok
+test_missing_usage_is_unknown_not_zero (bench.test_multiagent_test.ExtensionReportTests.test_missing_usage_is_unknown_not_zero) ... ok
+test_saved_abort_and_current_single_are_distinct (bench.test_multiagent_test.ExtensionReportTests.test_saved_abort_and_current_single_are_distinct) ... ok
+test_controller_charges_tree_delta_once_on_resume (bench.test_native_usage.AccountingTests.test_controller_charges_tree_delta_once_on_resume) ... ok
+test_decrease_invalid (bench.test_native_usage.AccountingTests.test_decrease_invalid) ... ok
+test_duplicate_copy_once (bench.test_native_usage.AccountingTests.test_duplicate_copy_once) ... ok
+test_malformed_tail (bench.test_native_usage.AccountingTests.test_malformed_tail) ... ok
+test_missing_child (bench.test_native_usage.AccountingTests.test_missing_child) ... ok
+test_missing_telemetry (bench.test_native_usage.AccountingTests.test_missing_telemetry) ... ok
+test_model_mismatch (bench.test_native_usage.AccountingTests.test_model_mismatch) ... ok
+test_parent_child_shared_session_id (bench.test_native_usage.AccountingTests.test_parent_child_shared_session_id) ... ok
+test_resume_longer_once (bench.test_native_usage.AccountingTests.test_resume_longer_once) ... ok
+test_single (bench.test_native_usage.AccountingTests.test_single) ... ok
+test_absolute (bench.test_protocol.ArchiveTests.test_absolute) ... ok
+test_content_mutation_changes_identity (bench.test_protocol.ArchiveTests.test_content_mutation_changes_identity) ... ok
+test_duplicate (bench.test_protocol.ArchiveTests.test_duplicate) ... ok
+test_git_metadata (bench.test_protocol.ArchiveTests.test_git_metadata) ... ok
+test_hardlink (bench.test_protocol.ArchiveTests.test_hardlink) ... ok
+test_modes_change_identity (bench.test_protocol.ArchiveTests.test_modes_change_identity) ... ok
+test_roundtrip_digest_and_modes (bench.test_protocol.ArchiveTests.test_roundtrip_digest_and_modes) ... ok
+test_symlink (bench.test_protocol.ArchiveTests.test_symlink) ... ok
+test_sync_keeps_git (bench.test_protocol.ArchiveTests.test_sync_keeps_git) ... ok
+test_sync_refuses_outside_root (bench.test_protocol.ArchiveTests.test_sync_refuses_outside_root) ... ok
+test_traversal (bench.test_protocol.ArchiveTests.test_traversal) ... ok
+test_actual_controller_accepts_verified_fixture (bench.test_protocol.BridgeTests.test_actual_controller_accepts_verified_fixture) ... ok
+test_actual_controller_does_not_accept_a_claim (bench.test_protocol.BridgeTests.test_actual_controller_does_not_accept_a_claim) ... ok
+test_blocked_is_not_zero_success (bench.test_protocol.ProtocolTests.test_blocked_is_not_zero_success) ... ok
+test_boolean_not_token_count (bench.test_protocol.ProtocolTests.test_boolean_not_token_count) ... ok
+test_cache_is_subset (bench.test_protocol.ProtocolTests.test_cache_is_subset) ... ok
+test_duplicate_completion_is_not_complete_usage (bench.test_protocol.ProtocolTests.test_duplicate_completion_is_not_complete_usage) ... ok
+test_empty_usage_unknown (bench.test_protocol.ProtocolTests.test_empty_usage_unknown) ... ok
+test_failed_turn_after_complete_remains_failed (bench.test_protocol.ProtocolTests.test_failed_turn_after_complete_remains_failed) ... ok
+test_failure_keeps_usage (bench.test_protocol.ProtocolTests.test_failure_keeps_usage) ... ok
+test_final_grader_is_authority (bench.test_protocol.ProtocolTests.test_final_grader_is_authority) ... ok
+test_known_stdin_status_does_not_hide_usage (bench.test_protocol.ProtocolTests.test_known_stdin_status_does_not_hide_usage) ... ok
+test_legitimate_zero_tokens (bench.test_protocol.ProtocolTests.test_legitimate_zero_tokens) ... ok
+test_malformed_log_cannot_claim_full_telemetry (bench.test_protocol.ProtocolTests.test_malformed_log_cannot_claim_full_telemetry) ... ok
+test_missing_cache_is_unknown (bench.test_protocol.ProtocolTests.test_missing_cache_is_unknown) ... ok
+test_missing_final_usage_partial (bench.test_protocol.ProtocolTests.test_missing_final_usage_partial) ... ok
+test_missing_reward_is_ungradable (bench.test_protocol.ProtocolTests.test_missing_reward_is_ungradable) ... ok
+test_nan_reward_is_ungradable (bench.test_protocol.ProtocolTests.test_nan_reward_is_ungradable) ... ok
+test_negative_counter_not_trusted (bench.test_protocol.ProtocolTests.test_negative_counter_not_trusted) ... ok
+test_partial_usage_not_full_cost (bench.test_protocol.ProtocolTests.test_partial_usage_not_full_cost) ... ok
+test_quota_in_message_not_error (bench.test_protocol.ProtocolTests.test_quota_in_message_not_error) ... ok
+test_seed_reproducible_all_arms (bench.test_protocol.ProtocolTests.test_seed_reproducible_all_arms) ... ok
+test_structured_quota (bench.test_protocol.ProtocolTests.test_structured_quota) ... ok
+test_time_phases_separate (bench.test_protocol.ProtocolTests.test_time_phases_separate) ... ok
+test_timeout_not_hidden_in_aggregate (bench.test_protocol.ProtocolTests.test_timeout_not_hidden_in_aggregate) ... ok
+test_warning_does_not_invent_worker_failure (bench.test_protocol.ProtocolTests.test_warning_does_not_invent_worker_failure) ... ok
+test_all_arms_equal_time_model_and_no_retries (bench.test_protocol.RunnerTests.test_all_arms_equal_time_model_and_no_retries) ... ok
+test_configured_image_needs_no_recipe_inference (bench.test_protocol.RunnerTests.test_configured_image_needs_no_recipe_inference) ... ok
+test_credentials_not_forwarded (bench.test_protocol.RunnerTests.test_credentials_not_forwarded) ... ok
+test_existing_results_are_preserved_before_preflight (bench.test_protocol.RunnerTests.test_existing_results_are_preserved_before_preflight) ... ok
+test_five_arm_settings_are_applied (bench.test_protocol.RunnerTests.test_five_arm_settings_are_applied) ... ok
+test_gold_no_model (bench.test_protocol.RunnerTests.test_gold_no_model) ... ok
+test_invalid_model_rejected_before_setup (bench.test_protocol.RunnerTests.test_invalid_model_rejected_before_setup) ... ok
+test_no_model_gate_required (bench.test_protocol.RunnerTests.test_no_model_gate_required) ... ok
+test_run_stops_before_models_when_blocked (bench.test_protocol.RunnerTests.test_run_stops_before_models_when_blocked) ... ok
+test_trial_reader_ignores_job_aggregate (bench.test_protocol.RunnerTests.test_trial_reader_ignores_job_aggregate) ... ok
+test_unpinned_cli_rejected (bench.test_protocol.RunnerTests.test_unpinned_cli_rejected) ... ok
+test_upstream_dockerfile_uses_reviewed_task_image (bench.test_protocol.RunnerTests.test_upstream_dockerfile_uses_reviewed_task_image) ... ok
+
+----------------------------------------------------------------------
+Ran 77 tests in 4.967s
+
+OK

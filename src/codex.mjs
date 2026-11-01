@@ -4,15 +4,17 @@ import { homedir } from 'node:os';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { classifyUsage } from './usage.mjs';
 const limits = new Set(['rate_limit_exceeded', 'usage_limit_reached', 'insufficient_quota', 'credits_exhausted']);
 export function parseCodexEvents(lines) {
   let thread = null, complete = false, failed = false, quota = false, malformed = false;
   const usage = [], errors = [];
+  let terminals = 0;
   for (const line of lines) {
     if (!line.trim()) continue;
     let e; try { e = JSON.parse(line); } catch { malformed = true; continue; }
     if (e.type === 'thread.started' && safeId(e.thread_id)) thread = e.thread_id;
-    if (e.type === 'turn.completed') { complete = true; if (e.usage) usage.push(e.usage); }
+    if (e.type === 'turn.completed') { terminals++; complete = true; if (e.usage) usage.push(e.usage); }
     if (e.type === 'turn.failed' || e.type === 'error') {
       failed = true;
       const error = e.error || e;
@@ -20,7 +22,11 @@ export function parseCodexEvents(lines) {
       quota ||= limits.has(error.code) || /\b(usage limit (?:has been )?reached|quota exceeded|credits exhausted|429 too many requests)\b/i.test(message);
     }
   }
-  return { thread_id: thread, usage, complete, quota, protocol_error: malformed || !complete || failed, diagnostic: errors.join('; ') };
+  const accounting = classifyUsage(usage);
+  return { thread_id: thread, usage, complete, quota, accounting_source: 'native',
+    usage_status: terminals > 1 ? 'invalid' : accounting.status,
+    usage_diagnostic: terminals > 1 ? 'Duplicate completed-turn event' : accounting.diagnostic,
+    protocol_error: malformed || terminals !== 1 || failed, diagnostic: errors.join('; ') };
 }
 export function codexArgs(run) {
   const settings = {

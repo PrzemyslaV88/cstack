@@ -72,7 +72,7 @@ test('a genuinely killed controller recovers with its consumed attempt intact', 
   const closed = new Promise(resolve => child.on('close', (code, signal) => resolve(signal))); child.kill('SIGKILL'); assert.equal(await closed, 'SIGKILL');
   const recovered = await loadRun(run.id, f.home);
   await processRun(recovered, { home: f.home, worker: correct });
-  assert.equal(recovered.status, 'VERIFIED'); assert.equal(recovered.attempts.length, 2); assert.equal(recovered.attempts[0].status, 'INTERRUPTED');
+  assert.equal(recovered.status, 'BLOCKED'); assert.equal(recovered.stop_code, 'USAGE_UNRESOLVED'); assert.equal(recovered.attempts.length, 1); assert.equal(recovered.attempts[0].status, 'INTERRUPTED');
 });
 test('run-wide ceiling stops extra dependent tasks', async t => {
   const other = { ...probe, id: 'AC2', argv: ['node', '-e', 'console.log(0)'], cases: [{ stdin: '', expect_json: 1 }] };

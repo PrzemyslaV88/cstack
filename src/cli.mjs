@@ -3,19 +3,32 @@ import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { beginRun, processRun, loadRun, normalizeContract, effectiveStatus, writeReport, approveRun, exportCandidate, dataHome, reviewDetails } from './core.mjs';
-import { createRunner } from './sandbox.mjs';
-import { preflightCodex, usageTotals } from './codex.mjs';
 import { manifest } from './snapshot.mjs';
 import { hash, json, requireThat } from './util.mjs';
 import { repository } from './repository.mjs';
 import { dependencyGraph } from './code-map.mjs';
 import { analyzeStack, analyzeTrace } from './stack-analysis.mjs';
 import { graphMarkdown, stackMarkdown, exportAnalysis, readTraceFile } from './analysis-report.mjs';
-const help = `cStack 0.3 — single-worker repairs and read-only project analysis
+import {upgradeFlags,upgradeCommand} from './cli-upgrade.mjs';
+import {renderResult,errorResult} from './cli-output.mjs';
+import { dataHome } from './util.mjs';
+const version=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
+const help = `cStack ${version} — single-worker repairs and read-only project analysis
 
 cstack map --repo /project [--focus relative/file.py] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack analyze-stack --repo /project [--trace /error.log] [--max-files 2000] [--format json|markdown] [--out /new/report]
+cstack setup --repo PATH [--image IMAGE] [--scope DIR] [--adapter pytest|vitest|node-test]
+cstack profile show|validate --repo PATH [--profile FILE]
+cstack env plan --repo PATH --profile FILE --out DIR [--recipe npm-lock|pip-hashes] [--base-image IMAGE]
+cstack env prepare --plan FILE --expect-plan SHA256
+cstack plan \"GOAL\" --repo PATH --profile FILE --acceptance FILE --out DIR
+cstack run --plan FILE --expect-plan SHA256 [--format markdown|json|jsonl]
+cstack review RUN_ID [--out DIR] [--format markdown|json]
+cstack impact --repo PATH (--file PATH | --since REV) [--depth 2] [--out DIR]
+cstack runs [--repo PATH] [--limit 20]
+cstack patch RUN_ID --out DIR
+cstack apply RUN_ID --repo PATH --snapshot SHA256 [--check]
+cstack delivery recover RUN_ID --delivery ID
 cstack doctor [--runner docker|linux] [--image IMAGE]
 cstack init "Observable goal" --out /outside/repo/contract.json [--runner docker|linux]
 cstack validate --contract /path/contract.json
@@ -32,20 +45,24 @@ Defaults: Docker verification, no network, no host fallback, ChatGPT Codex auth 
 Linux namespaces are an explicitly selected alternative. Native Windows: use WSL2.
 Contracts are frozen. Resume never increases budgets. No automatic push/deployment.
 `;
-function options(args) {
+const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['runner','image','profile','repo'], init:['out','runner'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags};
+function options(args, op) {
   const flags = {}, rest = [];
-  const known = new Set(['help', 'repo', 'contract', 'runner', 'image', 'out', 'criterion', 'snapshot', 'note', 'focus', 'max-files', 'format', 'trace']);
+  const known = new Set(['help', ...(commandFlags[op] || [])]);
   for (let i = 0; i < args.length; i++) {
     if (!args[i].startsWith('--')) { rest.push(args[i]); continue; }
     const key = args[i].slice(2); requireThat(known.has(key), 'Unknown option --' + key);
-    if (key === 'help') flags[key] = true;
+    requireThat(!Object.hasOwn(flags,key),'Repeated option --'+key);
+    if (['help','watch','check'].includes(key)) flags[key] = true;
     else { requireThat(args[i + 1] && !args[i + 1].startsWith('--'), 'Missing value for --' + key); flags[key] = args[++i]; }
   }
   return { flags, rest };
 }
 async function main() {
-  const [op, ...args] = process.argv.slice(2), { flags, rest } = options(args);
+  const [op, ...args] = process.argv.slice(2), { flags, rest } = options(args, op);
   if (!op || flags.help || op === 'help' || op === '--help') { console.log(help); return; }
+  requireThat(Object.hasOwn(commandFlags,op),'Unknown command: '+op);
+  if(await upgradeCommand(op,flags,rest))return;
   if (op === 'map' || op === 'analyze-stack') {
     requireThat(!rest.length, 'Use --repo to select the project');
     const maxFiles = flags['max-files'] === undefined ? 2000 : Number(flags['max-files']);
@@ -70,7 +87,8 @@ async function main() {
     console.log('Draft created: ' + resolve(flags.out) + '\nReview criteria, add observable probes, then set draft=false. Drafts cannot execute.'); return;
   }
   if (op === 'doctor') {
-    const report = { node: process.version, platform: process.platform, remaining_subscription_allowance: 'unknown' };
+    const {createRunner}=await import('./sandbox.mjs'); const {preflightCodex}=await import('./codex.mjs');
+    const report = {controller_ready:true,worker_ready:false,project_verifier_ready:'not_checked', node: process.version, platform: process.platform, remaining_subscription_allowance: 'unknown' };
     const temp = await mkdtemp(join(tmpdir(), 'cstack-doctor-'));
     try {
       try {
@@ -80,11 +98,15 @@ async function main() {
         report.verification = { ready: true, backend: runner.backend, identity: runner.identity };
       } catch (e) { report.verification = { ready: false, reason: e.message }; }
       try { report.codex = { ready: true, ...(await preflightCodex()) }; } catch (e) { report.codex = { ready: false, reason: e.message }; }
+      report.worker_ready=report.codex.ready;
+      if(flags.profile){const {readJson}=await import('./artifacts.mjs');const {checkEnvironment}=await import('./environment-plan.mjs');const {collectProjectTests}=await import('./setup.mjs');try{const p=await readJson(flags.profile);const {validateProfile}=await import('./project-profile.mjs');await validateProfile(p,await repository(flags.repo||'.'));const env=await checkEnvironment(p,{cwd:resolve(flags.repo||'.')});const r=await createRunner({image:env.image_id});await collectProjectTests(p,r,resolve(flags.repo||'.'));report.project_verifier_ready=true;}catch(e){report.project_verifier_ready=false;report.project_reason=e.message;}}
       console.log(json(report)); if (!report.verification.ready || !report.codex.ready) process.exitCode = 2;
     } finally { await rm(temp, { recursive: true, force: true }); } return;
   }
+  const {beginRun,loadRun,normalizeContract,effectiveStatus,writeReport,approveRun,exportCandidate,reviewDetails}=await import('./core.mjs');
+  const {usageTotals}=await import('./codex.mjs');
   if (op === 'validate' || op === 'run') {
-    requireThat(flags.contract, '--contract is required'); const c = normalizeContract(JSON.parse(await readFile(resolve(flags.contract), 'utf8')));
+    requireThat(flags.contract&&!flags['expect-plan'], '--contract is required; --expect-plan belongs to --plan'); const c = normalizeContract(JSON.parse(await readFile(resolve(flags.contract), 'utf8')));
     if (op === 'validate') { console.log(json({ valid: true, goal: c.goal, required: c.criteria.filter(x => x.required).length, runner: c.runner })); return; }
     requireThat(!rest.length || rest.join(' ') === c.goal, 'Goal differs from the frozen contract');
     const run = await beginRun({ repo: resolve(flags.repo || '.'), contract: c });
@@ -110,6 +132,7 @@ async function main() {
   throw new Error('Unknown command: ' + op);
 }
 async function execute(run) {
+  const {processRun,effectiveStatus,reviewDetails}=await import('./core.mjs');
   const abort = new AbortController(), cancel = () => abort.abort(); process.once('SIGINT', cancel); process.once('SIGTERM', cancel);
   try {
     const result = await processRun(run, { signal: abort.signal, onEvent: e => {
@@ -120,4 +143,4 @@ async function execute(run) {
     if (!['VERIFIED', 'INVESTIGATED'].includes(status)) process.exitCode = 2;
   } finally { process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel); }
 }
-main().catch(e => { console.error('cStack: ' + e.message); process.exitCode = 1; });
+main().catch(e => { const args=process.argv.slice(2),i=args.indexOf('--format'),format=i>=0?args[i+1]:null;if(['json','jsonl'].includes(format))process.stdout.write(renderResult(errorResult(e),format));else console.error('cStack: '+errorResult(e).message);process.exitCode=['SOURCE_CONFLICT','SOURCE_DIVERGED','DELIVERY_CONFLICT'].includes(e.code)?2:1; });

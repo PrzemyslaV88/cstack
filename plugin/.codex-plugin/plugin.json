@@ -1,8 +1,10 @@
 {
   "name": "cstack",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Map dependencies, analyze project stacks, and run coding jobs with the cStack controller.",
-  "author": { "name": "cStack" },
+  "author": {
+    "name": "cStack"
+  },
   "license": "MIT",
   "skills": "./skills/",
   "interface": {
@@ -11,7 +13,13 @@
     "longDescription": "Map Python, JavaScript and TypeScript file imports; identify technology stack declarations with file evidence; inspect Python/Node error frames; and run one controlled Codex repair worker with independent Docker checks and explicit review gates.",
     "developerName": "cStack",
     "category": "Developer Tools",
-    "capabilities": ["Read", "Write", "Interactive"],
-    "defaultPrompt": ["Use cStack to fix this bug and independently check the result."]
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Use cStack to fix this bug and independently check the result."
+    ]
   }
 }

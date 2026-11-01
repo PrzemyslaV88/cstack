@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { writeFile, rename, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hostname } from 'node:os';
@@ -93,4 +93,9 @@ export async function exportState(run, home = dataHome()) {
       await writeFile(temp, content, { mode: 0o600 }); await rename(temp, join(dir, name));
     }
   } finally { db.close(); }
+}
+
+export function listRuns({home=dataHome(),repo=null,limit=20}={}){
+ requireThat(Number.isSafeInteger(limit)&&limit>=1&&limit<=100,'Run limit must be 1..100');const file=join(home,'state-v2.db');if(!existsSync(file))return [];if(repo)repo=realpathSync(repo);
+ const db=new DatabaseSync(file,{readOnly:true});try{return db.prepare('SELECT state FROM runs').all().map(row=>JSON.parse(row.state)).filter(run=>!repo||run.repo===repo).sort((a,b)=>b.created.localeCompare(a.created)||b.id.localeCompare(a.id)).slice(0,limit).map(run=>({id:run.id,created:run.created,repo:run.repo,goal:run.contract.goal,status:run.status,active:run.active,attempts:run.attempts.length,delivery:run.delivery?.status||'NOT_APPLIED'}));}finally{db.close();}
 }

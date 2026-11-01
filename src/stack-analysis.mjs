@@ -1,6 +1,26 @@
 import { posix } from 'node:path';
 import { tokens, jsonConfig } from './imports.mjs';
 import { dependencyGraph } from './code-map.mjs';
+import { compareText } from './util.mjs';
+
+export function projectScopes(reader) {
+  const dirs = new Set(['.']);
+  for(const {path} of reader.files) if(/^(package\.json|pyproject\.toml|setup\.cfg|Cargo\.toml|go\.mod|requirements(?:[-.][^/]*)?\.(?:txt|in|lock))$/.test(posix.basename(path))) dirs.add(posix.dirname(path));
+  const classify = p => {
+    const parts=p.split('/');
+    for(const [kind,names] of [['benchmark',['bench','benchmark','benchmarks']],['example',['example','examples','demo','demos']],['test',['test','tests','testing','spec','specs','__tests__']]]) if(parts.some(x=>names.includes(x))) return kind;
+    return 'application';
+  };
+  const scopes=[...dirs].sort(compareText).map(path=>({id:path,path,kind:classify(path),basis:'manifest directory and path convention'}));
+  const ordered=[...scopes].sort((a,b)=>(a.path==='.'?1:b.path==='.'?-1:b.path.length-a.path.length) || compareText(a.path,b.path));
+  return {scopes,scopeFor:path=>ordered.find(s=>s.path==='.' || path.startsWith(s.path+'/')).id};
+}
+function dependencyRelation(proof) {
+  if(proof.kind==='lockfile entry' || /(?:lock|shrinkwrap)/.test(posix.basename(proof.path))) return 'lockfile-only';
+  if(proof.kind==='source import signal') return 'import-observed';
+  if(proof.kind==='filename signal') return 'configuration-signal';
+  return /devDependencies|dependency-groups|\.group\..*\.dependencies|dev-dependencies/.test(proof.key) ? 'declared-development' : 'declared-direct';
+}
 
 const tools = {
   react: ['React', 'UI framework'], next: ['Next.js', 'Application framework'], vue: ['Vue', 'UI framework'],
@@ -59,16 +79,23 @@ function declaredValue(value) {
 
 export async function analyzeStack(reader, { maxFiles = 2000 } = {}) {
   const findings = new Map(), dependencies = [], runtimes = [], scripts = [], entrypoints = [], warnings = [];
+  const scoped = new Map(), {scopes,scopeFor} = projectScopes(reader);
   const evidence = (path, line, key, kind = 'manifest declaration') => ({ path, line, key, kind });
   function signal(name, category, proof, declaredVersion = null) {
     const id = category + '/' + name, record = findings.get(id) || { name, category, evidence: [], declared_versions: [] };
     if (!record.evidence.some(e => JSON.stringify(e) === JSON.stringify(proof))) record.evidence.push(proof);
     const v = version(declaredVersion); if (v && !record.declared_versions.includes(v)) record.declared_versions.push(v);
     findings.set(id, record);
+    const scope_id=scopeFor(proof.path), sid=scope_id+'\0'+id, relation=dependencyRelation(proof);
+    const local=scoped.get(sid)||{scope_id,name,category,evidence:[],declared_versions:[],dependency_relations:[]};
+    if(!local.evidence.some(e=>JSON.stringify(e)===JSON.stringify(proof))) local.evidence.push(proof);
+    if(v && !local.declared_versions.includes(v)) local.declared_versions.push(v);
+    if(!local.dependency_relations.includes(relation)) local.dependency_relations.push(relation);
+    scoped.set(sid,local);
   }
   function dependency(name, declaredVersion, ecosystem, proof) {
     if (!/^[\w@./-]{1,200}$/.test(name)) return;
-    dependencies.push({ name, ecosystem, declared_version: version(declaredVersion), evidence: proof });
+    dependencies.push({ name, ecosystem, declared_version: version(declaredVersion), evidence: proof, scope_id:scopeFor(proof.path), dependency_relation:dependencyRelation(proof) });
     const found = tools[name] || tools[normalize(name)]; if (found) signal(...found, proof, declaredVersion);
   }
   function requirement(text, proof) {
@@ -178,7 +205,9 @@ export async function analyzeStack(reader, { maxFiles = 2000 } = {}) {
   }
   const languages = new Map();
   for (const f of reader.files) if (f.language) languages.set(f.language, (languages.get(f.language) || 0) + 1);
-  return { schema_version: 1, repository: reader.root, method: 'manifest declarations, source import signals and file conventions',
+  return { schema_version: 2, repository: reader.root, method: 'manifest declarations, source import signals and file conventions',
+    scopes, scoped_findings:[...scoped.values()].sort((a,b)=>compareText(a.scope_id,b.scope_id)||compareText(a.name,b.name)),
+    compatibility_projection:'findings is the schema-1 aggregate; use scoped_findings to distinguish application and tooling',
     languages: [...languages].map(([name, files]) => ({ name, files })).sort((a, b) => b.files - a.files || a.name.localeCompare(b.name)),
     runtimes, findings: [...findings.values()].sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name)),
     dependencies, scripts, entrypoints, warnings, coverage: { ...graph.coverage, ...reader.coverage(), partial: graph.coverage.partial || reader.coverage().partial },

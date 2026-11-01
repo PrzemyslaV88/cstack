@@ -1,0 +1,9 @@
+test_candidate_python_programs_are_unaffected (grader_offline_test.GraderCacheTests.test_candidate_python_programs_are_unaffected) ... ok
+test_missing_upstream_path_preserves_404_for_fallback (grader_offline_test.GraderCacheTests.test_missing_upstream_path_preserves_404_for_fallback) ... ok
+test_successful_response_is_replayed_without_network (grader_offline_test.GraderCacheTests.test_successful_response_is_replayed_without_network) ... ok
+test_uncached_url_fails_without_network (grader_offline_test.GraderCacheTests.test_uncached_url_fails_without_network) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.010s
+
+OK

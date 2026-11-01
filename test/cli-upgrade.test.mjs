@@ -1,0 +1,8 @@
+import {fileURLToPath} from 'node:url';
+import test from 'node:test';import assert from 'node:assert/strict';import {join} from 'node:path';import {fixture} from './helpers/fixture.mjs';import {command,cleanEnv} from '../src/process.mjs';import {renderResult} from '../src/cli-output.mjs';
+const cli=fileURLToPath(new URL('../src/cli.mjs',import.meta.url));
+test('CLI-01 CLI-02 CLI-03 CLI-04 PLAN-03: new commands reject conflicting flags and produce one machine result',async t=>{const f=await fixture(t,{'a/package.json':'{}','b/package.json':'{}'}),env=cleanEnv({CSTACK_HOME:join(f.root,'state'),DOCKER_HOST:'unix:///unavailable',CSTACK_CODEX_BIN:'/nonexistent'});
+ for(const args of [['impact','--repo',f.repo,'--file','calc.mjs','--since','HEAD'],['profile','show','--repo',f.repo,'--profile','unexpected'],['status','run','--watch','--format','json'],['run','--plan','x','--contract','y','--expect-plan','x']]){const r=await command([process.execPath,cli,...args,'--format','json'],{env});assert.notEqual(r.code,0);assert.equal(JSON.parse(r.stdout).status,'ERROR');}
+ const ambiguous=await command([process.execPath,cli,'setup','--repo',f.repo,'--format','json'],{env});assert.equal(JSON.parse(ambiguous.stdout).code,'PROJECT_SCOPE_AMBIGUOUS');assert.ok(!ambiguous.stderr.includes('SQLite'));
+ const impact=await command([process.execPath,cli,'impact','--repo',f.repo,'--file','calc.mjs','--format','json'],{env});assert.equal(impact.code,0,impact.stderr);assert.ok(!impact.stderr.includes('SQLite'));assert.equal(JSON.parse(impact.stdout).seeds[0],'calc.mjs');assert.ok(!renderResult({goal:'\u001b[31munsafe'},'json').includes('u001b'));
+});

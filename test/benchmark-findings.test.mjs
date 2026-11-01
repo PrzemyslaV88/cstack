@@ -54,7 +54,7 @@ for (const action of ['change', 'remove', 'rename', 'symlink']) {
         if (action === 'rename') await writeFile(join(x.run.worktree, 'tests/data/renamed.key'), sample);
         if (action === 'symlink') await symlink('original.txt', p);
       }
-      return { code: 0 };
+      return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] };
     } });
     assert.equal(run.status, 'BLOCKED');
     assert.match(run.reason, /fixture|credential file/);
@@ -70,7 +70,7 @@ test('a working fix with changes under testing requires review and current human
   const f = await fixture(t, { 'testing/test_unittest.py': '# original test\n' });
   const run = await beginRun({ ...f, contract: contract() });
   await processRun(run, { home: f.home, worker: async x => {
-    await correct(x); await writeFile(join(x.run.worktree, 'testing/test_unittest.py'), '# proposed regression test\n'); return { code: 0 };
+    await correct(x); await writeFile(join(x.run.worktree, 'testing/test_unittest.py'), '# proposed regression test\n'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] };
   } });
   assert.equal(run.status, 'NEEDS_MANUAL_VERIFICATION');
   assert.equal(run.results.AC1.status, 'PASS');
@@ -86,12 +86,12 @@ test('a testing-only patch is not an implementation, and a new conftest is prote
   const f = await fixture(t, { 'testing/test_math.py': '# original\n' });
   const run = await beginRun({ ...f, contract: contract() });
   await processRun(run, { home: f.home, worker: async ({ run }) => {
-    await writeFile(join(run.worktree, 'testing/test_math.py'), '# all tests removed\n'); return { code: 0 };
+    await writeFile(join(run.worktree, 'testing/test_math.py'), '# all tests removed\n'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] };
   } });
   assert.notEqual(run.status, 'VERIFIED'); assert.equal(run.results.AC1.status, 'FAIL');
   const other = await fixture(t), fixed = await beginRun({ ...other, contract: contract() });
   await processRun(fixed, { home: other.home, worker: async x => {
-    await correct(x); await writeFile(join(x.run.worktree, 'conftest.py'), '# new collection configuration\n'); return { code: 0 };
+    await correct(x); await writeFile(join(x.run.worktree, 'conftest.py'), '# new collection configuration\n'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] };
   } });
   assert.equal(fixed.status, 'NEEDS_MANUAL_VERIFICATION');
 });
@@ -100,7 +100,7 @@ test('new supporting tests do not replace frozen acceptance checks', async t => 
   const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
   await processRun(run, { home: f.home, worker: async x => {
     await correct(x); await mkdir(join(x.run.worktree, 'testing'));
-    await writeFile(join(x.run.worktree, 'testing/test_extra.py'), '# additional proposed coverage\n'); return { code: 0 };
+    await writeFile(join(x.run.worktree, 'testing/test_extra.py'), '# additional proposed coverage\n'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] };
   } });
   assert.equal(run.status, 'VERIFIED');
   assert.deepEqual(run.review.added_tests, ['testing/test_extra.py']);

@@ -26,13 +26,13 @@ test('a prose-only claim cannot satisfy a broken behavior', async t => {
 });
 test('tests-only patch cannot satisfy an implementation contract', async t => {
   const f = await fixture(t), run = await beginRun({ ...f, contract: contract() });
-  const out = await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'check.mjs'), 'process.exit(0);'); return { code: 0 }; } });
+  const out = await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'check.mjs'), 'process.exit(0);'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] }; } });
   assert.notEqual(out.status, 'VERIFIED'); assert.equal(out.results.AC1.status, 'FAIL');
 });
 test('changed existing tests require a human diff review, even with a working fix', async t => {
   const f = await fixture(t), cfg = contract({ criteria: [probe, { id: 'T', text: 'Run original test', kind: 'node-test', argv: ['node', '--test', 'check.mjs'], expected_tests: ['add'], required: false }] });
   const run = await beginRun({ ...f, contract: cfg });
-  await processRun(run, { home: f.home, worker: async x => { await correct(x); await writeFile(join(x.run.worktree, 'check.mjs'), '// changed test'); return { code: 0 }; } });
+  await processRun(run, { home: f.home, worker: async x => { await correct(x); await writeFile(join(x.run.worktree, 'check.mjs'), '// changed test'); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] }; } });
   assert.equal(run.status, 'NEEDS_MANUAL_VERIFICATION'); assert.match(run.reason, /Review/);
 });
 test('fabricated success prose cannot override observed failure', async t => {

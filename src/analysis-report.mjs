@@ -29,13 +29,28 @@ export function graphMarkdown(graph, options = {}) {
   return lines.join('\n');
 }
 
+function scopedTables(stack) {
+  const rank={application:0,test:1,example:2,benchmark:3};
+  const scopes=stack.scopes || [{id:'.',kind:'application'}], findings=stack.scoped_findings || stack.findings.map(f=>({...f,scope_id:'.',dependency_relations:[]}));
+  const output=[];
+  for(const scope of [...scopes].sort((a,b)=>rank[a.kind]-rank[b.kind] || (a.id==='.'?-1:b.id==='.'?1:a.id<b.id?-1:a.id>b.id?1:0))) {
+    output.push(`### ${scope.kind}: ${code(scope.id)}`, '');
+    const list=findings.filter(f=>f.scope_id===scope.id);
+    for(const locked of [false,true]) {
+      const rows=list.filter(f=> (f.dependency_relations.length===1 && f.dependency_relations[0]==='lockfile-only')===locked);
+      if(!rows.length) continue;
+      if(locked) output.push('Lockfile-only declarations (not confirmed direct application use):','');
+      output.push(...table(['Component','Category','Evidence type','Declared versions','Evidence'],rows.map(f=>[f.name,f.category,f.dependency_relations.join(', '),code(f.declared_versions.join(', ')||'not specified'),f.evidence.slice(0,3).map(proof).join('; ')])),'');
+    }
+  }
+  return output;
+}
 export function stackMarkdown(stack) {
   const lines = ['# cStack stack analysis', '', 'Observed declarations and file signals; installed versions and running services were not checked.', '',
     `Coverage: **${stack.coverage.partial ? 'partial' : 'within configured limits'}**. ${stack.coverage.inventory_files} files inventoried.`, '',
     '## Languages', '', ...table(['Language', 'Files'], stack.languages.map(l => [l.name, l.files])), '', '## Runtime declarations', '',
     ...table(['Runtime', 'Declared version', 'Evidence'], stack.runtimes.map(r => [r.name, code(r.declared_version ?? 'not specified'), proof(r.evidence)])), '',
-    '## Frameworks and tools', '', ...table(['Component', 'Category', 'Declared versions', 'Evidence'], stack.findings.map(f => [f.name, f.category,
-      code(f.declared_versions.join(', ') || 'not specified'), f.evidence.slice(0, 3).map(proof).join('; ')])), '',
+    '## Frameworks and tools', '', ...scopedTables(stack), '',
     '## Candidate entrypoints', '', ...table(['File', 'Evidence'], stack.entrypoints.map(e => [code(e.path), proof(e.evidence)])), '',
     '## Project commands', '', ...table(['Manifest', 'Command names'], stack.scripts.map(s => [code(s.path), s.names.map(code).join(', ')])), '',
     'Command bodies are neither executed nor exported. Dependency declarations and complete evidence are in the JSON report.', ''];

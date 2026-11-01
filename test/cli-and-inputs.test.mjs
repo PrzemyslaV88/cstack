@@ -54,7 +54,7 @@ test('explicit pinned dependency bundles work for an otherwise clean worktree', 
   await writeFile(join(bundle, 'local-fixture-dependency', 'index.js'), 'export const offset=0;');
   const cfg = contract({ workspace_inputs: [{ source: bundle, destination: 'node_modules', digest: hash(json(await manifest(bundle))) }] });
   const run = await beginRun({ ...f, contract: cfg });
-  await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'calc.mjs'), "import {offset} from 'local-fixture-dependency';export const add=(a,b)=>a+b+offset;"); return { code: 0 }; } });
+  await processRun(run, { home: f.home, worker: async ({ run }) => { await writeFile(join(run.worktree, 'calc.mjs'), "import {offset} from 'local-fixture-dependency';export const add=(a,b)=>a+b+offset;"); return { code: 0, accounting_source:'scripted', usage:[{input_tokens:0,output_tokens:0}] }; } });
   assert.equal(run.status, 'VERIFIED'); assert.deepEqual(run.changed_paths, ['calc.mjs']);
   await writeFile(join(run.worktree, 'node_modules', 'local-fixture-dependency', 'index.js'), 'export const offset=99;'); assert.equal(await effectiveStatus(run), 'STALE_EVIDENCE');
 });

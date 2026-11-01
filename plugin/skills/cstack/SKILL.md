@@ -1,64 +1,65 @@
 ---
 name: cstack
-description: Run a bounded coding fix through cStack's single worker and independent checks, or inspect/resume an existing cStack repair run. Use for cStack's evidence-gated repair workflow.
+description: Prepare and run a bounded coding repair with cStack's single worker, independent checks, review reports and safe delivery; inspect or resume an existing repair.
 ---
 
-Use the bundled controller. Its worktree, checks and result records are the source
-of completion evidence. The outer Codex session plans the job and presents results;
-the controller starts the coding worker and checks its candidate.
+Resolve `scripts/cstack.mjs` relative to this skill directory and use that bundled
+controller as `CSTACK`. Read [references/contracts.md](references/contracts.md) when
+writing acceptance criteria. The controller's frozen contract, snapshots and
+current evidence determine completion.
 
-For a read-only project map or technology inventory, use this plugin's graph-map
-or stack-analysis skill. Those analyses do not need a repair contract or Docker.
+For a new repair:
 
-## Locate and check the runtime
+1. Use the user's requested project and observable outcome. Run `setup --repo`
+   with an explicitly selected existing verifier image when available. Discovery
+   does not need model authentication. Resolve reported scope/adapter ambiguity
+   from session context; ask only when the missing choice affects the outcome.
+   Missing dependencies are setup problems, not failed coding attempts. `env plan`
+   explains bounded Docker preparation; `env prepare --plan --expect-plan` performs
+   that explicit plan. Never install into the host or pull images implicitly.
+2. Write an acceptance JSON file outside the project with concrete independent
+   probe inputs and expected outputs. Use the user's model choice (default
+   `gpt-6.1-sol`) and applicable budgets. Do not replace an automatable outcome with
+   manual-only acceptance. `plan "GOAL" --repo --profile --acceptance --out` freezes
+   the request and reproduces the baseline. It does not fabricate expected outputs
+   or call a model. `ALREADY_SATISFIED` means the supplied checks already pass; do
+   not describe it as a new fix. Ask a specific behavior question only when needed.
+3. Run a ready plan with `run --plan FILE --expect-plan SHA256`. Existing repair
+   authorization is sufficient; do not add a generic confirmation ritual. Preserve
+   the same `CSTACK_HOME` and explicitly chosen Docker connection across commands.
+   Never change global Docker context. Clean source is the default; do not commit,
+   stash or discard existing edits to bypass it. When the repair includes existing edits, select `plan --source-mode working-copy`
+   explicitly. It preserves staging and rejects any intervening included source
+   change with `SOURCE_DIVERGED`; inspect the returned review and create a new plan.
+4. Let the controller edit its private worktree. Do not modify that worktree from
+   the outer session, weaken frozen checks, forge events or increase budgets on
+   resume. `status --watch`, `runs`, `report`, `review`, and `evidence --criterion`
+   expose progress and results. An interrupted run can use `resume RUN_ID`.
+   Missing usage blocks further worker admission while retaining the candidate.
+5. Present the actual result in plain language: automated checks, pending human
+   review, token completeness, and whether the change was applied. `review --out`
+   writes a private self-contained HTML view; opening it is not approval. Existing
+   test/configuration edits can require review even when every check passed.
+6. A current VERIFIED repair can use `patch RUN_ID --out` and `apply RUN_ID --repo
+   --snapshot SHA256 --check`. If the user's task includes applying the repair,
+   run apply without `--check` after successful preflight. Otherwise present the
+   patch and next action. Do not push, commit or publish without authorization.
+   Do not edit original files concurrently with delivery. A conflict preserves
+   work; `delivery recover RUN_ID --delivery ID` can complete or roll back known
+   pre/post images and refuses to overwrite a third-value user edit.
 
-The executable is `scripts/cstack.mjs` relative to this skill directory. Resolve its
-absolute path from this `SKILL.md` location, rather than searching for a globally
-installed cstack binary. All examples below use `CSTACK` for that absolute path.
+`NEEDS_MANUAL_VERIFICATION` means review is still pending, not a final verification.
+Use `approve` only after an actual human has reviewed the exact snapshot and
+instructed that approval; record their note. Do not supply approval on their behalf
+just to finish a test or benchmark. A report is not an approval interface.
 
-Run `node "$CSTACK" doctor`. Node 22.13+, Git, an authenticated Codex CLI and an
-existing Docker engine/image are required. The plugin installs no dependencies or
-images automatically. If Docker's current context is unavailable, inspect existing
-contexts and use an available one via `DOCKER_CONTEXT` on these commands; do not
-change the user's global context. Preserve explicitly selected connection settings.
+The worker disables plugins, hooks and delegation. Keep those controls intact.
+Provider/account limits are recorded stops; no API-key billing fallback. Token
+counts are observed worker usage, not remaining subscription credits or necessarily
+the outer chat's total cost. Image dependencies prepare the verifier; they do not
+promise the host worker has the same environment. Credential-looking files remain
+blocked except exact previously reviewed and frozen test fixtures.
 
-## Carry out a job
-
-1. Establish the target Git repository and expected observable behavior from the
-   user's request and code. Read [references/contracts.md](references/contracts.md)
-   when preparing a new job. Build a complete contract outside the target repo,
-   with concrete input/expected-output cases. Use the user's chosen model; default
-   to `gpt-6.1-sol` when no model was specified. Keep checks independent of edits.
-   Existing authorization to fix the bug is sufficient to proceed. Ask only for
-   facts necessary to define the intended result that cannot be inferred.
-2. Run `node "$CSTACK" validate --contract "$CONTRACT"`, then
-   `node "$CSTACK" run --repo "$REPO" --contract "$CONTRACT"`. Preserve the same
-   `CSTACK_HOME` and Docker settings for later commands. The source revision must
-   be clean; never commit, stash, clean or discard the user's changes to satisfy
-   this requirement. Explain a dirty-source block with the exact affected files.
-3. Record the returned run ID. Let the controller edit and verify its private
-   worktree. Do not edit that worktree from this outer session, forge worker
-   events, weaken checks, or change its frozen contract after a failure. Monitor a
-   long process until it completes. An interrupted run can use `resume RUN_ID`;
-   resume preserves consumed attempts and budgets.
-4. Read `status RUN_ID` and `report RUN_ID`. For a specific failed check, use
-   `evidence RUN_ID --criterion ID`. Report the controller status, tests for the
-   named snapshot, pending review files, worktree path and observed token usage.
-   Tokens are not remaining subscription credits.
-5. For a current `VERIFIED` result, `export RUN_ID --out "$NEW_DIRECTORY"` delivers
-   the checked candidate and report. Show that location. Export does not merge it
-   into the original repository. Apply a candidate back to the project only when
-   that is within the user's request and its original work remains protected.
-
-`NEEDS_MANUAL_VERIFICATION` can mean the fix passed automated checks but changed
-protected tests/configuration. Present the exact pending review. Do not call
-`approve` or write a human approval note on the user's behalf without actual human
-review of that snapshot. Do not describe pending review as final verification.
-
-Credential-looking files remain blocked unless an exact existing test fixture was
-reviewed and pinned in the starting contract. Do not approve a file merely because
-it is in a test folder. New/changed files do not inherit fixture approval.
-
-The child worker disables plugins, hooks and delegation. Do not re-enable them or
-route the job to another coding framework to bypass a controller stop. A provider
-limit is a recorded stop; do not switch to API-key billing automatically.
+Legacy explicit contracts still use `validate`, `run --repo --contract`, and
+`export`. Export copies the verified candidate into a new directory. For read-only
+analysis use this plugin's graph-map, stack-analysis or impact-analysis skill.
