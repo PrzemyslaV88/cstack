@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/cstack-hero.svg" alt="cStack — Understand your code. Verify the fix." width="100%">
+  <img src="docs/assets/cstack-hero.png" alt="cStack — Understand your code. Verify the fix." width="100%">
 </p>
 
 <p align="center">
