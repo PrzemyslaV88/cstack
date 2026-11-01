@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="262.8pt" viewBox="0 0 864 262.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <title>cstack-hero</title>
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title>cstack-hero</dc:title>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>cStack</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 262.8
+L 864 262.8
+L 864 0
+L 0 0
+z
+" style="fill: #0b1220"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 13.68 261.36
+L 850.32 261.36
+Q 862.56 261.36 862.56 249.12
+L 862.56 13.68
+Q 862.56 1.44 850.32 1.44
+L 13.68 1.44
+Q 1.44 1.44 1.44 13.68
+L 1.44 249.12
+Q 1.44 261.36 13.68 261.36
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #0b1220; stroke: #253753; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 45.36 239.04
+L 159.84 239.04
+Q 165.6 239.04 165.6 233.28
+L 165.6 211.68
+Q 165.6 205.92 159.84 205.92
+L 45.36 205.92
+Q 39.6 205.92 39.6 211.68
+L 39.6 233.28
+Q 39.6 239.04 45.36 239.04
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #142138; stroke: #2d4362; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 174.96 239.04
+L 311.04 239.04
+Q 316.8 239.04 316.8 233.28
+L 316.8 211.68
+Q 316.8 205.92 311.04 205.92
+L 174.96 205.92
+Q 169.2 205.92 169.2 211.68
+L 169.2 233.28
+Q 169.2 239.04 174.96 239.04
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #142138; stroke: #2d4362; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 326.16 239.04
+L 473.04 239.04
+Q 478.8 239.04 478.8 233.28
+L 478.8 211.68
+Q 478.8 205.92 473.04 205.92
+L 326.16 205.92
+Q 320.4 205.92 320.4 211.68
+L 320.4 233.28
+Q 320.4 239.04 326.16 239.04
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #142138; stroke: #2d4362; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 668.16 180.72
+L 751.68 144.72
+L 831.6 180.72
+L 748.8 216.72
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #162b40; stroke: #385f76; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 668.16 144.72
+L 751.68 108.72
+L 831.6 144.72
+L 748.8 180.72
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #1b3a50; stroke: #6c8fff; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 668.16 108.72
+L 751.68 72.72
+L 831.6 108.72
+L 748.8 144.72
+z
+" clip-path="url(#pa223b6adf3)" style="fill: #173e43; stroke: #52edc5; stroke-width: 1.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="mdbb2e32c93" d="M 0 2.44949
+C 0.649612 2.44949 1.272706 2.191396 1.732051 1.732051
+C 2.191396 1.272706 2.44949 0.649612 2.44949 0
+C 2.44949 -0.649612 2.191396 -1.272706 1.732051 -1.732051
+C 1.272706 -2.191396 0.649612 -2.44949 0 -2.44949
+C -0.649612 -2.44949 -1.272706 -2.191396 -1.732051 -1.732051
+C -2.191396 -1.272706 -2.44949 -0.649612 -2.44949 0
+C -2.44949 0.649612 -2.191396 1.272706 -1.732051 1.732051
+C -1.272706 2.191396 -0.649612 2.44949 0 2.44949
+z
+" style="stroke: #52edc5"/>
+    </defs>
+    <g clip-path="url(#pa223b6adf3)">
+     <use xlink:href="#mdbb2e32c93" x="748.8" y="219.6" style="fill: #52edc5; stroke: #52edc5"/>
+    </g>
+   </g>
+   <g id="line2d_1">
+    <path d="M 748.8 216
+L 748.8 183.6
+" clip-path="url(#pa223b6adf3)" style="fill: none; stroke: #52edc5; stroke-opacity: 0.6; stroke-width: 1.2; stroke-linecap: square"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: start; fill: #52edc5" x="43.2" y="40.757656" transform="rotate(-0 43.2 40.757656)">LOCAL CODEX PLUGIN</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 10px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: start; fill: #a5b6cf" x="216" y="40.757656" transform="rotate(-0 216 40.757656)">v0.3.0</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 56px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: start; fill: #f3f7ff" x="40.32" y="115.349063" transform="rotate(-0 40.32 115.349063)">cStack</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 22px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: start; fill: #f3f7ff" x="43.2" y="156.195703" transform="rotate(-0 43.2 156.195703)">Understand your code. Verify the fix.</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 11.5px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: start; fill: #a5b6cf" x="43.2" y="187.307754" transform="rotate(-0 43.2 187.307754)">Project intelligence and checked repairs, inside Codex.</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: middle; fill: #f3f7ff" x="102.6" y="224.558125" transform="rotate(-0 102.6 224.558125)">CODE MAPS</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: middle; fill: #f3f7ff" x="243" y="224.558125" transform="rotate(-0 243 224.558125)">STACK ANALYSIS</text>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 8px; font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif; text-anchor: middle; fill: #f3f7ff" x="399.6" y="224.558125" transform="rotate(-0 399.6 224.558125)">CHECKED REPAIRS</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pa223b6adf3">
+   <rect x="0" y="0" width="864" height="262.8"/>
+  </clipPath>
+ </defs>
+</svg>
