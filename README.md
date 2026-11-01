@@ -190,7 +190,7 @@ CSTACK_TEST_RUNNER=docker npm test
 python -m unittest discover -s bench -t . -p 'test_*.py' -v
 ```
 
-Docker tests require an available engine and the selected image. Harbor-specific integration tests require the pinned benchmark environment; without it, those tests are skipped. The recorded release gate used that environment. CI runs the Docker suite on Node 22/24; consult the [actual workflow runs](https://github.com/PrzemyslaV88/cstack/actions/workflows/ci.yml) for remote status.
+Docker tests require an available engine and the selected image. Harbor-specific integration tests require the pinned benchmark environment; without it, those tests are skipped. The recorded release gate used that environment. Validation runs locally. GitHub CI is disabled; pushes and pull requests do not start GitHub-hosted test jobs.
 
 Tests cover false completion, isolation, changed evidence, crash/retry/resume behavior, fixture guards, protected-test review, plugin relocation, Python/TypeScript mapping and report exports. Raw model traces, authentication, task caches and local operator notes stay outside Git. The benchmark summary publishes the measured rows without those private artifacts.
 

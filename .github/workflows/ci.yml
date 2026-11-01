@@ -1,5 +1,6 @@
 name: CI
-on: [push, pull_request]
+# Validation runs locally. GitHub CI is disabled; retain manual configuration for reference.
+on: [workflow_dispatch]
 permissions:
   contents: read
 jobs:
