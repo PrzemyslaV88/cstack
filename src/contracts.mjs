@@ -1,4 +1,5 @@
 import { requireThat, integer, argv, safeId } from './util.mjs';
+import { normalizeTestFixtures } from './file-policy.mjs';
 const validTypes = ['FIX', 'FEATURE', 'REFACTOR', 'INVESTIGATE'];
 function strings(value, name, nonempty = false) {
   requireThat(Array.isArray(value) && (!nonempty || value.length) && value.every(x => typeof x === 'string' && x.trim()) && new Set(value).size === value.length, `${name} must be an array of unique strings`);
@@ -12,7 +13,7 @@ function paths(value, name) {
 }
 export function normalizeContract(raw) {
   requireThat(raw && typeof raw === 'object' && !Array.isArray(raw), 'Contract must be an object');
-  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'runner', 'budget', 'model', 'reasoning']);
+  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'approved_test_fixtures', 'runner', 'budget', 'model', 'reasoning']);
   for (const key of Object.keys(raw)) requireThat(allowed.has(key), `Unknown contract property: ${key}`);
   requireThat(raw.schema_version === undefined || raw.schema_version === 2, 'Use schema_version 2; v1 evidence cannot be promoted');
   requireThat(!raw.draft, 'Review the draft contract and set draft=false before execution');
@@ -109,6 +110,7 @@ export function normalizeContract(raw) {
   return { schema_version: 2, type, goal: raw.goal.trim(), policy, attempt_limit: attemptLimit, criteria, tasks: normalizedTasks,
     implementation_paths: paths(raw.implementation_paths || [], 'implementation_paths'),
     workspace_inputs: workspaceInputs.map(x => ({ source: x.source, destination: x.destination, digest: x.digest })),
+    approved_test_fixtures: normalizeTestFixtures(raw.approved_test_fixtures),
     runner: { backend: runner.backend, ...(runner.image ? { image: runner.image } : {}) },
     budget: { max_attempts: integer(b.max_attempts, Math.min(12, attemptLimit * tasks.length), 1, 100, 'max_attempts'),
       max_active_ms: integer(b.max_active_ms, 1_800_000, 100, 86_400_000, 'max_active_ms'),

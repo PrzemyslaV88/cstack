@@ -4,7 +4,9 @@ import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { hash, json, redact, requireThat } from './util.mjs';
 import { manifest, fingerprint } from './snapshot.mjs';
-export const verifierIdentity = async () => hash(await readFile(fileURLToPath(import.meta.url)) + await readFile(fileURLToPath(new URL('./runners/node-reporter.mjs', import.meta.url))));
+export const verifierIdentity = async () => hash((await Promise.all(
+  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs']
+    .map(p => readFile(fileURLToPath(new URL(p, import.meta.url)))))).map(b => hash(b)).join(':'));
 export function parseTestReport(stdout, expected) {
   let events;
   try { events = stdout.trim().split('\n').filter(Boolean).map(x => JSON.parse(x)); }
@@ -29,7 +31,7 @@ function assertProbe(result, item) {
     diagnostic: `Expected stdout ${JSON.stringify(item.expect_stdout)}; observed ${JSON.stringify(result.stdout)}` };
 }
 export async function verify(run, snapshot, runner, { home, signal, deadline = Infinity } = {}) {
-  const proofs = {}, before = hash(json(await manifest(snapshot.path))), version = await verifierIdentity();
+  const proofs = {}, before = hash(json(await manifest(snapshot.path, run.contract))), version = await verifierIdentity();
   requireThat(before === snapshot.artifact_digest, 'Sealed artifact was modified before verification', 'INTEGRITY');
   const evidenceDir = join(home, 'runs', run.id, 'evidence'); await mkdir(evidenceDir, { recursive: true, mode: 0o700 });
   for (const c of run.contract.criteria) {
@@ -71,7 +73,7 @@ export async function verify(run, snapshot, runner, { home, signal, deadline = I
     await writeFile(join(evidenceDir, recordHash + '.json'), record, { mode: 0o600 });
     proofs[c.id] = { ...proof, evidence_hash: recordHash };
   }
-  if (hash(json(await manifest(snapshot.path))) !== before || await fingerprint(run.worktree) !== snapshot.source_digest) {
+  if (hash(json(await manifest(snapshot.path, run.contract))) !== before || await fingerprint(run.worktree, run.contract) !== snapshot.source_digest) {
     for (const proof of Object.values(proofs)) proof.status = 'STALE';
   }
   return proofs;

@@ -1,7 +1,20 @@
-# Independent comparison pilot
+# Independent comparison benchmark
 
-**Status: implemented integration scaffold; local protocol/bridge tests pass. Live
-Harbor/Docker/Codex runs have NOT been completed. No comparative result exists.**
+**Status: the pilot, five-arm batch and ten-run cStack multi-agent extension have completed.**
+The [preserved five-arm results](../docs/BATCH_COMPARISON_RESULTS.md) record 25 scheduled
+attempts: 24 private-test passes and one cStack pre-worker fixture-guard abort.
+All 24 model-invoking trials have complete native parent/helper token records.
+The [five-arm protocol](../docs/BATCH_COMPARISON_PROTOCOL.md) describes actual
+delegation and the observed role deviations. The sections below describe the
+original three-arm pilot interface.
+
+The [cStack multi-agent extension](../docs/CSTACK_MULTIAGENT_PROTOCOL.md) adds
+`cstack-codex-multiagent` and refreshed single-agent cStack runs on the same five
+bugs. Use `npm run bench:multiagent -- prepare|run|report --work <fresh-directory>`
+(choose one action). Its combined report labels saved and current trials, counts
+all native helpers and preserves the original batch. The plugin default stays
+single-worker. The [completed extension results](../docs/CSTACK_MULTIAGENT_RESULTS.md)
+include all ten new passing bug-test runs and comparison with the saved workflows.
 
 This directory does not add another coding framework. It connects the existing
 Harbor evaluator to ordinary Codex, a labelled single-worker pstack adaptation,
@@ -11,10 +24,13 @@ that one system is generally better. It may already appear in model training.
 
 ## Run on an authenticated machine
 
+For this T7 Mac checkout, see [local setup and commands](../docs/COMPARISON_LOCAL.md).
+
 Requirements: Node >=22.13, Git, Python >=3.12, a functioning Docker engine, Codex
 CLI, and network access for explicit provisioning. Run in a dedicated development
-environment with no unrelated production credentials. A Mac uses Docker Desktop
-and linux/amd64 images; native Apple Silicon compatibility has NOT been validated.
+environment with no unrelated production credentials. This T7 Mac execution used
+Colima with Rosetta and linux/amd64 images; the exact local setup is recorded in
+the linked setup document.
 
 From this branch's repository root:
 
@@ -22,7 +38,7 @@ From this branch's repository root:
 # Install pinned infrastructure. This does not call a model.
 uv venv .bench-venv --python 3.12
 . .bench-venv/bin/activate
-uv pip install -r bench/requirements.txt
+uv pip install -r bench/requirements.lock
 
 # Authenticate locally. Never upload auth.json or paste tokens into a chat.
 codex login
@@ -63,9 +79,11 @@ CLI version, code, public contract, task, pstack source and evaluator are record
 | pstack-adapted-single-worker | Full pinned pstack files, interpreted sequentially by Codex; no Cursor/Claude plugin runtime, reviewers or multiagent execution |
 | cstack-harbor | Real `src/core.mjs` controller on the host, remote Codex worker in the same Harbor task environment |
 
-**This does not compare native multiagent pstack.** That practical-product track
-needs its supported runtime, complete child-agent accounting and separate labels.
-Do not rename the adapted arm to pstack in a chart or announcement.
+The original pilot does not compare native multiagent pstack. The later batch adds
+`plain-codex-multiagent` and `pstack-codex-multiagent`, with actual helper threads
+and native usage accounting. The latter exercises pinned pstack skills plus the
+Codex tool mapping, rather than the Cursor/Claude plugin runtime. Keep that label
+explicit in any chart or announcement.
 
 All three get the same issue and explicit public reproduction. The native Codex
 features for delegation, hooks, plugins and web search are disabled. Host and model
@@ -93,13 +111,14 @@ are unknown; input + output is reported, cached input is not added again.
   containers. The coding worker never gets nested-Docker privileges.
 - Candidate files are restored onto the grader's original Git baseline, not the
   worker's flattened Git metadata. No-op/gold tests exercise this handoff.
-- The official benchmark evaluator remains an upstream trusted component, not a
-  proof of arbitrary malicious-code resistance. This code has NOT completed a
-  real Docker boundary validation; do not call it production hardened.
+- The official benchmark evaluator remains an upstream trusted component. The
+  local runs exercise candidate transfer and separate offline Docker grading;
+  they do not establish arbitrary malicious-code resistance or production hardening.
 
 The grader's upstream test setup must work offline. The current preparer deliberately
 refuses to invent a task image when no prebuilt image or expected Python exists.
-The smoke adapter is specific to this SymPy task, not a universal Python adapter.
+The original smoke recipe and five additional per-case recipes are explicitly
+pinned. They are not a universal Python task adapter.
 
 ## Logs and honest results
 
@@ -127,12 +146,18 @@ python -m py_compile bench/*.py
 node --check bench/cstack_bridge.mjs
 ```
 
+On the recorded T7 Mac, set `DOCKER_CONTEXT=colima-cstack` before the Python command.
+Bridge tests select Docker on macOS and Linux namespaces on Linux by default;
+`CSTACK_TEST_RUNNER=docker` explicitly selects Docker on either platform.
+
 The bridge tests exercise the **real** cStack controller and real isolated Node
 verification with a **scripted worker**. They verify plumbing, not AI effectiveness.
 Harbor is intentionally not imported by offline protocol tests; tests cannot prove
 that the third-party runtime APIs, Docker image recipes or account login work.
 
-Current execution record: `../docs/BENCHMARK_EXECUTION.md`.
+Current execution records: [live pilot](../docs/COMPARISON_RESULTS.md) and
+[five-case batch](../docs/BATCH_COMPARISON_RESULTS.md). The
+[31 October record](../docs/BENCHMARK_EXECUTION.md) is historical setup evidence.
 
 ## Upstream references
 

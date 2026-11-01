@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "model": "gpt-6.1-sol",
+  "codex_version": "0.163.0",
+  "cases": [
+    {
+      "id": "flask-5014",
+      "task": "swe-bench/pallets__flask-5014",
+      "task_ref": "sha256:ec1cbb94086b650e100135585abf431332c601fd9a2fde86ad63aca305940c3c",
+      "image": "swebench/sweb.eval.x86_64.pallets_1776_flask-5014:latest",
+      "goal": "Reject empty Blueprint names while preserving valid names",
+      "criteria": [
+        {
+          "id": "PUBLIC",
+          "kind": "probe",
+          "text": "Public issue reproduction and control cases produce the expected result",
+          "argv": [
+            "/opt/miniconda3/envs/testbed/bin/python",
+            "-c",
+            "import os,sys,json\nsys.path[:0]=[os.getcwd(),os.path.join(os.getcwd(),\"src\")]\nos.environ[\"PYTHONPATH\"]=os.pathsep.join([os.getcwd(),os.path.join(os.getcwd(),\"src\")])\n\nfrom flask import Blueprint\nname=json.load(sys.stdin)\ntry:\n    value=Blueprint(name,__name__)\n    result=value.name\nexcept Exception as error:\n    result=type(error).__name__\nprint(json.dumps(result))\n"
+          ],
+          "timeout_ms": 45000,
+          "cases": [
+            {
+              "stdin": "\"\"\n",
+              "expect_json": "ValueError"
+            },
+            {
+              "stdin": "\"valid\"\n",
+              "expect_json": "valid"
+            }
+          ]
+        }
+      ],
+      "arms": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "order": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "max_seconds_per_arm": 1800,
+      "reasoning": "medium",
+      "repetitions": 1,
+      "codex_pstack_mapping": true,
+      "purpose": "five-case descriptive bug-fix comparison with actual delegated runs"
+    },
+    {
+      "id": "sympy-12481",
+      "task": "swe-bench/sympy__sympy-12481",
+      "task_ref": "sha256:6dde91f8530f3011382e722cb03d479741d061bcdbe03db8f4613518763f444d",
+      "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12481:latest",
+      "goal": "Apply overlapping permutation cycles in left-to-right order",
+      "criteria": [
+        {
+          "id": "PUBLIC",
+          "kind": "probe",
+          "text": "Overlapping cycles compose left to right and ordinary cycles remain correct",
+          "argv": [
+            "/opt/miniconda3/envs/testbed/bin/python",
+            "-c",
+            "import os,sys,json\nsys.path[:0]=[os.getcwd(),os.path.join(os.getcwd(),\"src\")]\nos.environ[\"PYTHONPATH\"]=os.pathsep.join([os.getcwd(),os.path.join(os.getcwd(),\"src\")])\n\nfrom sympy.combinatorics import Permutation\ncycles=json.load(sys.stdin)\ntry: result=Permutation(cycles).array_form\nexcept Exception as error: result={'error':type(error).__name__}\nprint(json.dumps(result))\n"
+          ],
+          "timeout_ms": 45000,
+          "cases": [
+            {
+              "stdin": "[[0, 1], [0, 1]]\n",
+              "expect_json": [
+                0,
+                1
+              ]
+            },
+            {
+              "stdin": "[[0, 1], [1, 2]]\n",
+              "expect_json": [
+                2,
+                0,
+                1
+              ]
+            },
+            {
+              "stdin": "[[0, 1]]\n",
+              "expect_json": [
+                1,
+                0
+              ]
+            },
+            {
+              "stdin": "[[0, 1], [2, 3]]\n",
+              "expect_json": [
+                1,
+                0,
+                3,
+                2
+              ]
+            }
+          ]
+        }
+      ],
+      "arms": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "order": [
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent",
+        "plain-codex"
+      ],
+      "max_seconds_per_arm": 1800,
+      "reasoning": "medium",
+      "repetitions": 1,
+      "codex_pstack_mapping": true,
+      "purpose": "five-case descriptive bug-fix comparison with actual delegated runs"
+    },
+    {
+      "id": "sympy-24539",
+      "task": "swe-bench/sympy__sympy-24539",
+      "task_ref": "sha256:18964b04490ccd5b305b932d60ba3a3a23af70c4ff1161ba3ae3e9c046fb9aec",
+      "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-24539:latest",
+      "goal": "Use supplied symbols when converting a polynomial ring element to an expression",
+      "criteria": [
+        {
+          "id": "PUBLIC",
+          "kind": "probe",
+          "text": "Public bug reproduction and adjacent controls behave correctly",
+          "argv": [
+            "/opt/miniconda3/envs/testbed/bin/python",
+            "-c",
+            "import os,sys,json\nsys.path[:0]=[os.getcwd(),os.path.join(os.getcwd(),\"src\")]\nos.environ[\"PYTHONPATH\"]=os.pathsep.join([os.getcwd(),os.path.join(os.getcwd(),\"src\")])\n\nfrom sympy import ring,ZZ,symbols\nkind=json.load(sys.stdin)\nR,x,y,z=ring('x,y,z',ZZ)\nf=3*x**2*y-x*y*z+7*z**3+1\nU,V,W=symbols('u,v,w')\nif kind=='custom':\n    value=f.as_expr(U,V,W)\n    passed=value==3*U**2*V-U*V*W+7*W**3+1 and value.free_symbols=={U,V,W}\nelif kind=='default':\n    X,Y,Z=symbols('x,y,z')\n    passed=f.as_expr()==3*X**2*Y-X*Y*Z+7*Z**3+1\nelse: passed=R.one.as_expr(U,V,W)==1\nprint(json.dumps(passed))\n"
+          ],
+          "timeout_ms": 45000,
+          "cases": [
+            {
+              "stdin": "\"custom\"\n",
+              "expect_json": true
+            },
+            {
+              "stdin": "\"default\"\n",
+              "expect_json": true
+            },
+            {
+              "stdin": "\"constant\"\n",
+              "expect_json": true
+            }
+          ]
+        }
+      ],
+      "arms": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "order": [
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent",
+        "plain-codex",
+        "cstack-harbor"
+      ],
+      "max_seconds_per_arm": 1800,
+      "reasoning": "medium",
+      "repetitions": 1,
+      "codex_pstack_mapping": true,
+      "purpose": "five-case descriptive bug-fix comparison with actual delegated runs"
+    },
+    {
+      "id": "pytest-7236",
+      "task": "swe-bench/pytest-dev__pytest-7236",
+      "task_ref": "sha256:9e5c26c53d959d695889ffca57f2e95a8eec9118a0e3a42eca54e46fe101ad8a",
+      "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-7236:latest",
+      "goal": "Do not call unittest setup or teardown for skipped tests under pytest --pdb",
+      "criteria": [
+        {
+          "id": "PUBLIC",
+          "kind": "probe",
+          "text": "Public issue reproduction and control cases produce the expected result",
+          "argv": [
+            "/opt/miniconda3/envs/testbed/bin/python",
+            "-c",
+            "import os,sys,json\nsys.path[:0]=[os.getcwd(),os.path.join(os.getcwd(),\"src\")]\nos.environ[\"PYTHONPATH\"]=os.pathsep.join([os.getcwd(),os.path.join(os.getcwd(),\"src\")])\n\nimport tempfile,subprocess\nfrom pathlib import Path\npdb=json.load(sys.stdin)\nwith tempfile.TemporaryDirectory() as directory:\n    path=Path(directory)/'test_repro.py'\n    path.write_text(\"import unittest\\nclass Case(unittest.TestCase):\\n    def setUp(self): raise AssertionError('setUp must not run')\\n    @unittest.skip('hello')\\n    def test_one(self): pass\\n    def tearDown(self): raise AssertionError('tearDown must not run')\\n\".replace('\\\\n','\\n'))\n    args=[sys.executable,'-m','pytest','-q']+(['--pdb'] if pdb else [])+[str(path)]\n    result=subprocess.run(args,input='q\\n',stdout=subprocess.PIPE,stderr=subprocess.STDOUT,universal_newlines=True,timeout=30)\n    print(json.dumps(result.returncode==0 and '1 skipped' in result.stdout and 'tearDown must not run' not in result.stdout))\n"
+          ],
+          "timeout_ms": 45000,
+          "cases": [
+            {
+              "stdin": "true\n",
+              "expect_json": true
+            },
+            {
+              "stdin": "false\n",
+              "expect_json": true
+            }
+          ]
+        }
+      ],
+      "arms": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "order": [
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent",
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker"
+      ],
+      "max_seconds_per_arm": 1800,
+      "reasoning": "medium",
+      "repetitions": 1,
+      "codex_pstack_mapping": true,
+      "purpose": "five-case descriptive bug-fix comparison with actual delegated runs"
+    },
+    {
+      "id": "sphinx-9230",
+      "task": "swe-bench/sphinx-doc__sphinx-9230",
+      "task_ref": "sha256:a5712649c494b6fad03742fd8ec8a7d611b9c34e8b77a8bd5e4c70f2daffbc0c",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9230:latest",
+      "goal": "Preserve spaces inside parenthesized Python parameter types in Sphinx documentation",
+      "criteria": [
+        {
+          "id": "PUBLIC",
+          "kind": "probe",
+          "text": "Public issue reproduction and control cases produce the expected result",
+          "argv": [
+            "/opt/miniconda3/envs/testbed/bin/python",
+            "-c",
+            "import os,sys,json\nsys.path[:0]=[os.getcwd(),os.path.join(os.getcwd(),\"src\")]\nos.environ[\"PYTHONPATH\"]=os.pathsep.join([os.getcwd(),os.path.join(os.getcwd(),\"src\")])\n\nimport tempfile,io,re\nfrom pathlib import Path\nfrom sphinx.application import Sphinx\nfrom docutils import nodes\ntype_text=json.load(sys.stdin)\nwith tempfile.TemporaryDirectory() as directory:\n    root=Path(directory); src=root/'src'; src.mkdir()\n    (src/'conf.py').write_text(\"project = 'public probe'\\n\")\n    (src/'index.rst').write_text('Public probe\\n============\\n\\n.. py:function:: example(opc_meta)\\n\\n   :param '+type_text+' opc_meta: (optional)\\n')\n    app=Sphinx(str(src),str(src),str(root/'out'),str(root/'doctrees'),'pseudoxml',status=io.StringIO(),warning=io.StringIO(),freshenv=True)\n    app.build()\n    tree=app.env.get_doctree('index')\n    text=''.join(field.astext() for field in tree.traverse(nodes.field))\n    print(json.dumps('opc_meta(dict(str,str))' in re.sub(r'\\s+','',text)))\n"
+          ],
+          "timeout_ms": 45000,
+          "cases": [
+            {
+              "stdin": "\"dict(str, str)\"\n",
+              "expect_json": true
+            },
+            {
+              "stdin": "\"dict(str,str)\"\n",
+              "expect_json": true
+            }
+          ]
+        }
+      ],
+      "arms": [
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent",
+        "pstack-codex-multiagent"
+      ],
+      "order": [
+        "pstack-codex-multiagent",
+        "plain-codex",
+        "cstack-harbor",
+        "pstack-adapted-single-worker",
+        "plain-codex-multiagent"
+      ],
+      "max_seconds_per_arm": 1800,
+      "reasoning": "medium",
+      "repetitions": 1,
+      "codex_pstack_mapping": true,
+      "purpose": "five-case descriptive bug-fix comparison with actual delegated runs"
+    }
+  ]
+}

@@ -57,9 +57,11 @@ class AdapterTests(unittest.TestCase):
         self.contract = self.root / 'contract.json'; self.contract.write_text('{"criteria":[]}')
         modules = {name: types.ModuleType(name) for name in (
             'harbor', 'harbor.agents', 'harbor.agents.base', 'harbor.agents.installed',
-            'harbor.agents.installed.codex', 'harbor.models', 'harbor.models.agent', 'harbor.models.agent.context')}
+            'harbor.agents.installed.codex', 'harbor.agents.options', 'harbor.models', 'harbor.models.agent', 'harbor.models.agent.context')}
         modules['harbor.agents.base'].BaseAgent = FakeBase
         modules['harbor.agents.installed.codex'].Codex = FakeCodex
+        modules['harbor.agents.installed.codex'].CodexOptions = type('CodexOptions', (), {})
+        modules['harbor.agents.options'].AgentOptions = type('AgentOptions', (), {})
         modules['harbor.models.agent.context'].AgentContext = types.SimpleNamespace
         spec = importlib.util.spec_from_file_location('bench._fixture_adapter', Path(__file__).with_name('harbor_agents.py'))
         self.module = importlib.util.module_from_spec(spec)
@@ -79,8 +81,65 @@ class AdapterTests(unittest.TestCase):
         a = self.agent('PstackAdapted', pstack_dir=str(self.root))
         self.assertEqual(a.name(), 'pstack-adapted-single-worker')
         self.assertIn('not official multiagent pstack', a.public_instruction('Fix a bug'))
+    def test_multiagent_arms_enable_real_delegation(self):
+        for name in ('PlainMultiAgent', 'PstackMultiAgent', 'CstackMultiAgent'):
+            a = self.agent(name, **({'pstack_dir': str(self.root)} if name == 'PstackMultiAgent' else {}))
+            self.assertTrue(a.kwargs['config']['features']['multi_agent'])
+            self.assertEqual(a.kwargs['config']['agents']['max_concurrent_threads_per_session'], 2)
+            self.assertTrue(a.kwargs['config']['features']['multi_agent_v2'])
+            self.assertIn('actual spawn_agent', a.worker_instruction('One coding worker. No subagents. No push, deployment, credential access, controller access or test weakening.')
+                          if name == 'CstackMultiAgent' else a.public_instruction('Fix a bug'))
+            self.assertNotIn('perform delegated roles sequentially', a.public_instruction('Fix a bug'))
     def test_cstack_uses_same_model_config(self):
         self.assertEqual(self.agent().kwargs, self.agent('CstackHarbor').kwargs)
+    def test_cstack_multiagent_mapping_preserves_checks_and_requires_known_policy(self):
+        agent = self.agent('CstackMultiAgent')
+        original = ('Objective: fix bug\nOne coding worker. No subagents. No push, deployment, credential access, controller access or test weakening.\n'
+                    'PUBLIC: unchanged probe\nDo not commit, change Git HEAD, edit Codex configuration, or perform unrelated refactoring.')
+        mapped = agent.worker_instruction(original)
+        self.assertIn('PUBLIC: unchanged probe', mapped)
+        self.assertIn('Do not commit, change Git HEAD', mapped)
+        self.assertIn('Only the parent may edit /testbed', mapped)
+        self.assertNotIn('No subagents', mapped)
+        with self.assertRaisesRegex(RuntimeError, 'policy changed'):
+            agent.worker_instruction('unrecognised prompt')
+    def test_single_worker_disables_both_agent_features(self):
+        config = self.agent('CstackHarbor').kwargs['config']
+        self.assertFalse(config['features']['multi_agent_v2'])
+        self.assertFalse(config['agents']['enabled'])
+    def test_cstack_multiagent_public_goal_has_no_conflicting_agent_ban(self):
+        text = self.agent('CstackMultiAgent').public_instruction('Fix the actual issue')
+        self.assertIn('Fix the actual issue', text)
+        self.assertIn('"criteria"', text)
+        self.assertNotIn('Do not use other agents', text)
+    def test_cstack_multiagent_charges_helpers_and_refuses_missing_rollouts(self):
+        agent = self.agent('CstackMultiAgent')
+
+        class NativeEnvironment:
+            calls = 0
+            include_children = True
+            async def download_dir(env, remote, local):
+                env.calls += 1; local.mkdir(parents=True)
+                for tid, parent in [('root', None)] + ([('child1', 'root'), ('child2', 'root')] if env.include_children else []):
+                    amount = env.calls * 10
+                    rows = [
+                        {'type': 'session_meta', 'payload': {'id': tid, 'parent_thread_id': parent}},
+                        {'type': 'turn_context', 'payload': {'model': 'test-model', 'effort': 'medium'}},
+                        {'type': 'event_msg', 'payload': {'type': 'token_count', 'info': {'total_token_usage': {
+                            'input_tokens': amount, 'cached_input_tokens': 0, 'cache_write_input_tokens': 0,
+                            'output_tokens': 2, 'reasoning_output_tokens': 0, 'total_tokens': amount + 2}}}},
+                        {'type': 'event_msg', 'payload': {'type': 'task_complete'}}]
+                    (local / (tid + '.jsonl')).write_text('\n'.join(json.dumps(r) for r in rows))
+
+        env = NativeEnvironment(); agent.turn_attempts = 1
+        first = asyncio.run(agent.controller_usage({'usage': [{'input_tokens': 1}]}, env))
+        self.assertEqual(first[0]['total_tokens'], 36)
+        agent.turn_attempts = 2
+        second = asyncio.run(agent.controller_usage({'usage': []}, env))
+        self.assertEqual(second[0]['total_tokens'], 30)
+        agent.turn_attempts = 3; env.include_children = False
+        with self.assertRaisesRegex(RuntimeError, 'Complete parent/helper native usage required'):
+            asyncio.run(agent.controller_usage({'usage': []}, env))
     def test_completed_turns_summed_once(self):
         a = self.agent(); env = FakeEnvironment()
         asyncio.run(a.turn('first', env)); asyncio.run(a.turn('repair', env))

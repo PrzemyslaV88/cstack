@@ -1,0 +1,8 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cstack",
+  "version": "0.3.0",
+  "description": "Map project dependencies, analyze the technology stack, and run independently checked coding fixes.",
+  "license": "MIT",
+  "author": { "name": "cStack" }
+}

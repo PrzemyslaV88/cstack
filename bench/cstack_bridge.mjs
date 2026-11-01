@@ -1,7 +1,7 @@
 // Host-side cStack controller. The contestant worker remains in Harbor's container.
 // No candidate code or hidden tests execute in this bridge process.
 import { createInterface } from 'node:readline';
-import { beginRun, processRun, effectiveStatus } from '../src/core.mjs';
+import { beginRun, processRun, effectiveStatus, reviewDetails } from '../src/core.mjs';
 import { join } from 'node:path';
 const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
 const iterator = lines[Symbol.asyncIterator]();
@@ -29,6 +29,7 @@ try {
     }
   });
   send({ op: 'finished', status: await effectiveStatus(run), reason: run.reason,
+    checks_for_snapshot: reviewDetails(run), metrics: run.metrics, attempts: run.attempts.length,
     run_id: run.id, worktree: run.worktree, report: join(config.home, 'runs', run.id, 'report.md') });
 } catch (error) {
   send({ op: 'error', message: String(error.message || error) }); process.exitCode = 2;

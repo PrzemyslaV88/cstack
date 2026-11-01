@@ -1,4 +1,29 @@
-# v0.2 validation record
+# Validation records
+
+## Current 0.3.0 local validation
+
+On 1 November 2026, the T7 Mac completed **90 core/package tests and 77 benchmark
+regression tests**, with zero failures or skips in that configured local run.
+Core checks used the real Docker verifier. Syntax checks passed for 35 JavaScript
+modules. All three plugin skills passed their frontmatter validator.
+
+The installed package was exercised from isolated and normal Codex profiles.
+Native skill discovery confirmed `cstack:cstack`, `cstack:graph-map` and
+`cstack:stack-analysis`; installed file hashes matched the build. Read-only analysis
+exercises required no model workers, Docker or authentication. They preserved the
+sample project and excluded its secret/error-message markers from exported reports.
+
+See [installed-plugin validation](CODEX_PLUGIN.md#version-030-analysis-validation)
+and [analysis capabilities](PROJECT_ANALYSIS.md). The earlier benchmark studies
+used frozen controller versions before the 0.3 analysis additions; they do not
+measure the repair performance of 0.3. Raw evidence remains local, with a
+[sanitized benchmark summary](benchmarks/2026-11-01-results.json) committed for review.
+
+## Historical v0.2 validation record
+
+The record below describes the 31 October environment and the release decision at
+that time. Later Docker, live-model and Mac tests are documented separately; its
+"not validated" list is not a statement about the current release.
 
 Date: 31 October 2026. Audited base: `3bb752216c705f240f4b330890ca828bcbb3a8e2`.
 

@@ -134,6 +134,8 @@ def codex_events(text: str) -> dict:
     for line in text.splitlines():
         if not line.strip():
             continue
+        if line == 'Reading additional input from stdin...':
+            continue
         try:
             event = json.loads(line)
             if not isinstance(event, dict):
@@ -160,7 +162,7 @@ def codex_events(text: str) -> dict:
     for key in keys:
         values = [u.get(key) for u in usage]
         totals[key] = sum(values) if values and all(type(x) is int and x >= 0 for x in values) else None
-    complete_usage = completed and not malformed and not errors and totals['input_tokens'] is not None and totals['output_tokens'] is not None
+    complete_usage = completed and len(usage) == 1 and not malformed and not errors and totals['input_tokens'] is not None and totals['output_tokens'] is not None
     # CLI stderr may include warnings in Harbor's combined stream. Preserve
     # incomplete telemetry without misclassifying an otherwise completed turn.
     return {'complete': completed and not errors, 'quota': quota,

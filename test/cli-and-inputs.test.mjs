@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile, readFile, chmod } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, chmod, realpath, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beginRun, processRun, effectiveStatus, command } from '../src/core.mjs';
@@ -17,9 +17,9 @@ test('CLI lifecycle exercises real persistence and isolated verification with a 
 import {writeFileSync} from 'node:fs';import {join} from 'node:path';
 const args=process.argv.slice(2);
 if(args.includes('--help')){console.log('--ignore-user-config --ignore-rules');}
-else if(args.includes('features')){for(const f of ['multi_agent','hooks','plugins','apps','goals'])console.log(f+' stable false');}
+else if(args.includes('features')){if(args.includes('--ignore-user-config')||args.includes('--ignore-rules'))process.exit(2);for(const f of ['multi_agent','multi_agent_v2','hooks','plugins','apps','goals'])console.log(f+' stable false');}
 else if(args.includes('login'))console.log('Logged in using ChatGPT');
-else{writeFileSync(${JSON.stringify(received)},JSON.stringify({args,apiKeyPresent:Boolean(process.env.OPENAI_API_KEY)}));
+else{if(args.indexOf('--ignore-user-config')<args.indexOf('exec'))process.exit(2);writeFileSync(${JSON.stringify(received)},JSON.stringify({args,apiKeyPresent:Boolean(process.env.OPENAI_API_KEY)}));
 writeFileSync(join(args[args.indexOf('--cd')+1],'calc.mjs'),'export const add=(a,b)=>a+b;');
 console.log(JSON.stringify({type:'thread.started',thread_id:'fixture-session'}));
 console.log(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'Fixed quota-related accounting too'}}));
@@ -27,7 +27,9 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:100,cached
 `;
   await writeFile(binary, script); await chmod(binary, 0o755);
   const path = join(f.root, 'contract.json'); await writeFile(path, json(contract()));
-  const env = cleanEnv({ CSTACK_HOME: f.home, CSTACK_CODEX_BIN: binary, OPENAI_API_KEY: 'synthetic-not-a-real-key' });
+  const env = cleanEnv({ CSTACK_HOME: f.home, CSTACK_CODEX_BIN: binary, OPENAI_API_KEY: 'synthetic-not-a-real-key',
+    ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}),
+    ...(process.env.DOCKER_HOST ? { DOCKER_HOST: process.env.DOCKER_HOST } : {}) });
   const start = await command([process.execPath, cli, 'run', '--repo', f.repo, '--contract', path], { env, timeoutMs: 15000 });
   assert.equal(start.code, 0, start.stderr + start.stdout); assert.match(start.stdout, /"status": "VERIFIED"/);
   const id = start.stdout.match(/Run: ([A-Za-z0-9-]+)/)[1];
@@ -63,15 +65,24 @@ test('changed dependency bundle cannot enter a run under its previous digest', a
 });
 test('Docker adapter pins image ID, restricts capabilities/resources, and always requests cleanup', async t => {
   const f = await fixture(t), calls = [];
+  const previous = { DOCKER_HOST: process.env.DOCKER_HOST, OPENAI_API_KEY: process.env.OPENAI_API_KEY };
+  t.after(() => { for (const [key, value] of Object.entries(previous)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  } });
+  process.env.DOCKER_HOST = 'unix:///tmp/cstack-test-docker.sock';
+  process.env.OPENAI_API_KEY = 'synthetic-not-a-real-key';
   const control = async (args, opts) => {
     calls.push({ args, opts });
     if (args.includes('inspect')) return { code: 0, stdout: 'sha256:' + 'a'.repeat(64), stderr: '' };
     return { code: 0, stdout: 'ok', stderr: '' };
   };
   const runner = await createRunner({ backend: 'docker' }, { control });
-  await runner.execute(['node', '-e', 'console.log(1)'], { cwd: f.repo, timeoutMs: 1000 });
+  const alias = join(f.root, 'repo-link'); await symlink(await realpath(f.repo), alias, 'dir');
+  await runner.execute(['node', '-e', 'console.log(1)'], { cwd: alias, timeoutMs: 1000 });
   const launch = calls.find(c => c.args[1] === 'run');
   for (const flag of ['--network=none', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=65534:65534', '--pids-limit=128', '--memory=1g', '--pull=never']) assert.ok(launch.args.includes(flag), flag);
   assert.ok(launch.args.includes('sha256:' + 'a'.repeat(64))); assert.ok(calls.some(c => c.args[1] === 'rm'));
   assert.equal(launch.opts.env.OPENAI_API_KEY, undefined);
+  assert.ok(calls.every(c => c.opts.env.DOCKER_HOST === process.env.DOCKER_HOST));
+  assert.ok(launch.args.includes(`type=bind,src=${await realpath(f.repo)},dst=/candidate,readonly`));
 });

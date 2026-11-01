@@ -4,6 +4,7 @@ import { join } from 'node:path';
 let count = 0;
 async function visit(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('._')) continue; // AppleDouble metadata on external Mac drives.
     const p = join(dir, entry.name);
     if (entry.isDirectory()) await visit(p);
     else if (p.endsWith('.mjs')) {
@@ -12,5 +13,5 @@ async function visit(dir) {
     }
   }
 }
-for (const directory of ['src', 'test', 'scripts']) await visit(directory);
+for (const directory of ['src', 'test', 'scripts', 'bench', 'plugin']) await visit(directory);
 console.log(`Syntax checked ${count} JavaScript modules.`);

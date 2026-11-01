@@ -1,5 +1,9 @@
 # Benchmark execution record — 31 October 2026
 
+This is the historical build-environment attempt. The subsequent authenticated Mac
+[pilot](COMPARISON_RESULTS.md) and [five-case batch](BATCH_COMPARISON_RESULTS.md)
+have completed; those documents contain the current execution results.
+
 ## Outcome
 
 **Live comparison BLOCKED. Zero live contestant runs. No model allowance consumed

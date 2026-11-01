@@ -24,7 +24,10 @@ from .protocol import ARMS, blocked_report, digest_tree, dump, execution_order, 
 ROOT = Path(__file__).resolve().parents[1]
 PILOT = json.loads((ROOT / 'bench/pilot.json').read_text())
 CLASSES = {'plain-codex': 'PlainCodex', 'pstack-adapted-single-worker': 'PstackAdapted',
-           'cstack-harbor': 'CstackHarbor', 'noop': 'Noop', 'gold': 'Gold'}
+           'cstack-harbor': 'CstackHarbor', 'plain-codex-multiagent': 'PlainMultiAgent',
+           'pstack-codex-multiagent': 'PstackMultiAgent', 'cstack-controlled-recovery': 'ControlledRecoveryCstack',
+           'cstack-codex-multiagent': 'CstackMultiAgent',
+           'noop': 'Noop', 'gold': 'Gold'}
 TOKEN_KEYS = ('OPENAI_API_KEY', 'AZURE_OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_BASE_URL',
               'OPENAI_API_BASE', 'CODEX_API_KEY', 'NODE_OPTIONS', 'BASH_ENV', 'ENV')
 
@@ -34,7 +37,9 @@ def child_env(auth: bool = False) -> dict[str, str]:
     keys = ('PATH', 'HOME', 'USER', 'LANG', 'LC_ALL', 'TMPDIR', 'DOCKER_HOST', 'DOCKER_CONTEXT',
             'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH', 'XDG_RUNTIME_DIR', 'SSH_AUTH_SOCK', 'SSL_CERT_FILE')
     env = {k: os.environ[k] for k in keys if k in os.environ}
-    env.update({'PYTHONPATH': str(ROOT), 'DOCKER_DEFAULT_PLATFORM': 'linux/amd64'})
+    # Task images/builds explicitly use amd64. Let Harbor's networking sidecar
+    # use the daemon's native architecture on Apple Silicon.
+    env['PYTHONPATH'] = str(ROOT)
     if auth:
         env['CODEX_AUTH_JSON_PATH'] = str(auth_path())
         env['CODEX_FORCE_AUTH_JSON'] = 'true'
@@ -49,7 +54,7 @@ def command(argv: list[str], *, timeout=120, auth=False, cwd=ROOT) -> str:
     result = subprocess.run(argv, cwd=cwd, env=child_env(auth), text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
     if result.returncode:
-        raise RuntimeError(f'{argv[0]} failed ({result.returncode}): {result.stderr[-2000:]}')
+        raise RuntimeError(f'{argv[0]} failed ({result.returncode}): {result.stderr[-2000:]}\n{result.stdout[-2000:]}')
     return result.stdout.strip()
 
 
@@ -74,6 +79,12 @@ def doctor() -> dict:
             checks['docker_server'] = command(['docker', 'info', '--format', '{{.ServerVersion}}'], timeout=15)
         except Exception:
             blockers.append('Docker engine unavailable to this process')
+        for plugin, argv in (('compose', ['docker', 'compose', 'version', '--short']),
+                             ('buildx', ['docker', 'buildx', 'version'])):
+            try:
+                checks['docker_' + plugin] = command(argv, timeout=15)
+            except Exception:
+                blockers.append('Docker ' + plugin + ' plugin unavailable')
     if checks['harbor']:
         try:
             dist = importlib.metadata.distribution('harbor')
@@ -103,7 +114,7 @@ def implementation_digest() -> str:
     digest = hashlib.sha256()
     for folder in ('src', 'bench'):
         for path in sorted((ROOT / folder).rglob('*')):
-            if path.is_file() and '__pycache__' not in path.parts and path.suffix in ('.mjs', '.py', '.json', '.sh'):
+            if path.is_file() and not path.name.startswith('._') and '__pycache__' not in path.parts and path.suffix in ('.mjs', '.py', '.json', '.sh'):
                 digest.update(str(path.relative_to(ROOT)).encode() + b'\0' + path.read_bytes())
     return digest.hexdigest()
 
@@ -112,6 +123,19 @@ def image_id(image: str) -> str:
     value = command(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], timeout=20)
     if not re.fullmatch(r'sha256:[a-f0-9]{64}', value): raise ValueError('Unpinned image identity')
     return value
+
+
+def task_image(task: Path, configured: str | None) -> str:
+    if configured:
+        return configured
+    # This registry task declares its prebuilt image in the upstream Dockerfile.
+    # Only the reviewed SymPy smoke recipe is supported; never invent a base.
+    recipe = (task / 'environment/Dockerfile').read_text()
+    images = re.findall(r'^FROM\s+(\S+)\s*$', recipe, re.MULTILINE)
+    expected = 'swebench/sweb.eval.x86_64.sympy_1776_sympy-20590:latest'
+    if images != [expected]:
+        raise ValueError('Unsupported upstream Dockerfile; review the prebuilt task image first')
+    return images[0]
 
 
 def read_lock(work: Path) -> dict:
@@ -126,7 +150,8 @@ def read_lock(work: Path) -> dict:
     return lock
 
 
-def prepare(work: Path, model: str, codex_version: str) -> None:
+def prepare(work: Path, model: str, codex_version: str, spec: dict | None = None) -> None:
+    settings = {**PILOT, **(spec or {})}
     if not re.fullmatch(r'(?:openai/)?[a-zA-Z0-9._-]+', model):
         raise ValueError('Use an explicit OpenAI model identifier')
     if not re.fullmatch(r'\d+\.\d+\.\d+(?:[-.][A-Za-z0-9.-]+)?', codex_version):
@@ -138,7 +163,7 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
     if setup_blockers: raise RuntimeError('; '.join(setup_blockers))
     if (work / 'lock.json').exists(): raise ValueError('Use a new directory; never replace a prepared experiment')
     download = work / 'upstream'
-    command(['harbor', 'tasks', 'download', PILOT['task'] + '@' + PILOT['task_ref'],
+    command(['harbor', 'tasks', 'download', settings['task'] + '@' + settings['task_ref'],
              '--output-dir', str(download)], timeout=300)
     matches = list(download.rglob('task.toml'))
     if len(matches) != 1: raise ValueError('Expected exactly one upstream task')
@@ -151,25 +176,31 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
     if config.steps: raise ValueError('Pilot supports only a single-step task')
     if not (task / 'tests/test.sh').is_file() or not (task / 'solution/solve.sh').is_file():
         raise ValueError('Expected upstream verifier and known repair are missing')
-    if not config.environment.docker_image:
-        raise ValueError('Pilot requires the upstream prebuilt task image; do not guess a base image')
-    upstream_image = config.environment.docker_image
+    upstream_image = task_image(task, config.environment.docker_image or settings.get('image'))
     command(['docker', 'pull', '--platform', 'linux/amd64', upstream_image], timeout=900)
     public_image = image_id(upstream_image)
     build_base = command(['docker', 'image', 'inspect', '--format', '{{index .RepoDigests 0}}', upstream_image], timeout=20)
     if not re.fullmatch(r'[A-Za-z0-9._/:-]+@sha256:[a-f0-9]{64}', build_base):
         raise ValueError('An immutable upstream repository digest is required')
-    python_bin = '/opt/miniconda3/envs/testbed/bin/python'
+    python_bin = settings.get('python_bin', '/opt/miniconda3/envs/testbed/bin/python')
     command(['docker', 'run', '--rm', '--network=none', public_image,
-             python_bin, '-c', 'import sympy; print(sympy.__version__)'], timeout=60)
+             python_bin, '--version'], timeout=60)
+    project_toml = command(['docker', 'run', '--rm', '--network=none', public_image,
+        python_bin, '-c', 'from pathlib import Path; p=Path("/testbed/pyproject.toml"); print(p.read_text() if p.exists() else "")'], timeout=30)
+    build_requirements = list(dict.fromkeys(['setuptools', 'wheel'] +
+        tomllib.loads(project_toml).get('build-system', {}).get('requires', [])))
 
     pstack_checkout = work / 'pstack-upstream'
     command(['git', 'clone', '--filter=blob:none', '--no-checkout', 'https://github.com/cursor/plugins.git', str(pstack_checkout)], timeout=300)
-    command(['git', '-C', str(pstack_checkout), 'checkout', '--detach', PILOT['pstack_commit']], timeout=120)
-    if command(['git', '-C', str(pstack_checkout), 'rev-parse', 'HEAD']) != PILOT['pstack_commit']:
+    command(['git', '-C', str(pstack_checkout), 'checkout', '--detach', settings['pstack_commit']], timeout=120)
+    if command(['git', '-C', str(pstack_checkout), 'rev-parse', 'HEAD']) != settings['pstack_commit']:
         raise ValueError('Pstack pin mismatch')
     pstack = pstack_checkout / 'pstack'
     if not (pstack / 'skills/poteto-mode/SKILL.md').is_file(): raise ValueError('Pstack skill missing')
+    if settings.get('codex_pstack_mapping'):
+        compat = ROOT / 'bench/compat'
+        shutil.copy2(compat / 'codex-tools.md', pstack / 'skills/poteto-mode/references/codex-tools.md')
+        shutil.copy2(compat / 'pstack-models.md', pstack / 'pstack-models.md')
     toolchain_tag = 'node:22.16.0-bookworm-slim'
     command(['docker', 'pull', '--platform', 'linux/amd64', toolchain_tag], timeout=300)
     toolchain = command(['docker', 'image', 'inspect', '--format', '{{index .RepoDigests 0}}', toolchain_tag], timeout=20)
@@ -196,6 +227,8 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
     # Grader has original Git history/tests. Worker receives neither grader image nor tests.
     grader = work / 'grader-build'
     shutil.copytree(task / 'tests', grader / 'tests')
+    shutil.copytree(ROOT / 'bench/grader_offline', grader / 'grader_offline', ignore=shutil.ignore_patterns('__pycache__', '._*'))
+    (grader / 'build-requirements.txt').write_text('\n'.join(build_requirements) + '\n')
     (grader / 'tests/test.sh').rename(grader / 'tests/upstream-test.sh')
     shutil.copy2(ROOT / 'bench/protocol.py', grader / 'tests/bench_protocol.py')
     (grader / 'tests/restore.py').write_text(
@@ -212,7 +245,18 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
         'python3 /tests/restore.py\ncd /testbed\n'
         'git config core.hooksPath /dev/null\n'
         'exec bash /tests/upstream-test.sh\n')
-    (grader / 'Dockerfile').write_text(f'FROM {build_base}\nUSER root\nCOPY tests /tests\nRUN chmod +x /tests/test.sh\n')
+    (grader / 'Dockerfile').write_text(
+        f'FROM {build_base}\nUSER root\nCOPY tests /tests\nCOPY build-requirements.txt /build-requirements.txt\n'
+        'COPY grader_offline /opt/benchmark-grader\n'
+        # Match the upstream task's pinned uv provisioning. Warm its parser and
+        # editable-install dependencies before the verifier loses network access.
+        'RUN curl -LsSf https://astral.sh/uv/0.7.13/install.sh | sh\n'
+        f'RUN {python_bin} -m pip download --dest /opt/benchmark-wheels -r /build-requirements.txt\n'
+        'RUN chmod +x /tests/test.sh && mkdir -p /logs/verifier\n'
+        'ENV PYTHONPATH=/opt/benchmark-grader BENCHMARK_HTTP_CACHE_MODE=record\n'
+        'RUN bash /tests/upstream-test.sh; test "$(cat /logs/verifier/reward.txt)" = 0 && test -s /logs/verifier/report.json\n'
+        'ENV UV_OFFLINE=1 PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/benchmark-wheels UV_PYTHON_DOWNLOADS=never BENCHMARK_HTTP_CACHE_MODE=replay\n'
+        'RUN rm -f /logs/verifier/reward.txt /logs/verifier/report.json\n')
     grader_tag = 'cstack-bench-grader:' + original_digest[:12]
     command(['docker', 'build', '--platform', 'linux/amd64', '-t', grader_tag, str(grader)], timeout=900)
     grader_image = image_id(grader_tag)
@@ -222,19 +266,26 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
     data['environment'].pop('allow_internet', None)
     data['environment'].pop('allowed_hosts', None)
     data['verifier'].pop('allowed_hosts', None)
-    data['agent'].update({'timeout_sec': 1800, 'network_mode': 'allowlist',
+    data['agent'].update({'timeout_sec': settings['max_seconds_per_arm'], 'network_mode': 'allowlist',
         'allowed_hosts': ['chatgpt.com', 'auth.openai.com', 'api.openai.com']})
     data['verifier'].update({'environment_mode': 'separate', 'network_mode': 'no-network',
         'timeout_sec': 600, 'collect': [], 'environment': {'docker_image': grader_image, 'network_mode': 'no-network'}})
     data['artifacts'] = []  # Harbor always transfers /logs/artifacts; no source/test/control mounts.
     (task / 'task.toml').write_text(TaskConfig.model_validate(data).model_dump_toml())
-    contract = {'schema_version': 2, 'type': 'FIX', 'goal': 'Restore documented Symbol slot behavior',
+    contract = {'schema_version': 2, 'type': 'FIX', 'goal': settings.get('goal', 'Restore documented Symbol slot behavior'),
         'attempt_limit': 3, 'runner': {'backend': 'docker', 'image': public_image},
         'budget': {'max_attempts': 3, 'max_active_ms': 1_795_000, 'worker_timeout_ms': 600_000,
                    'max_observed_tokens': 500_000}, 'reasoning': 'medium',
         'criteria': [{'id': 'SLOTS', 'kind': 'probe', 'text': 'A Symbol instance has no __dict__',
           'argv': [python_bin, '-c', 'import sys,json; from sympy import Symbol; print(json.dumps(hasattr(Symbol(json.load(sys.stdin)), "__dict__")))'],
           'cases': [{'stdin': '"s"', 'expect_json': False}, {'stdin': '"z"', 'expect_json': False}]}]}
+    if settings.get('criteria'):
+        contract['criteria'] = settings['criteria']
+    if settings.get('approved_test_fixtures'):
+        contract['approved_test_fixtures'] = settings['approved_test_fixtures']
+    contract['reasoning'] = settings['reasoning']
+    contract['budget']['max_active_ms'] = settings['max_seconds_per_arm'] * 1000 - 5000
+    contract['budget']['worker_timeout_ms'] = min(600_000, contract['budget']['max_active_ms'])
     dump(work / 'public-contract.json', contract)
     lock = {'schema_version': 1, 'model': model, 'codex_version': codex_version,
         'harbor_commit': PILOT['harbor_commit'], 'pstack_commit': PILOT['pstack_commit'],
@@ -242,17 +293,24 @@ def prepare(work: Path, model: str, codex_version: str) -> None:
         'pstack_path': str(pstack), 'pstack_digest': digest_tree(pstack),
         'worker_image': worker_image, 'grader_image': grader_image, 'public_image': public_image, 'node_toolchain': toolchain,
         'contract_digest': hashlib.sha256((work / 'public-contract.json').read_bytes()).hexdigest(),
-        'implementation_digest': implementation_digest(), 'order': execution_order(PILOT['seed'])}
+        'implementation_digest': implementation_digest(), 'settings': settings,
+        'order': settings.get('order') or execution_order(settings['seed']),
+        'host_python': sys.version, 'host_node': command(['node', '--version']),
+        'dependency_lock_sha256': hashlib.sha256((ROOT / 'bench/requirements.lock').read_bytes()).hexdigest()}
     dump(work / 'lock.json', lock)
 
 
 def job_config(work: Path, lock: dict, arm: str) -> dict:
     gate = arm in ('noop', 'gold')
-    kwargs = {} if gate else {'public_contract': str(work / 'public-contract.json'), 'codex_version': lock['codex_version']}
-    if arm == 'pstack-adapted-single-worker': kwargs['pstack_dir'] = lock['pstack_path']
+    settings = lock.get('settings', PILOT)
+    kwargs = {'public_contract': str(work / 'public-contract.json')}
+    if not gate: kwargs['codex_version'] = lock['codex_version']
+    if arm in ('pstack-adapted-single-worker', 'pstack-codex-multiagent'): kwargs['pstack_dir'] = lock['pstack_path']
     if arm == 'gold': kwargs['solution_dir'] = str(Path(lock['task_path']) / 'solution')
+    if not gate:
+        kwargs.update({'trial_seconds': settings['max_seconds_per_arm'], 'reasoning_effort': settings['reasoning']})
     agent = {'import_path': 'bench.harbor_agents:' + CLASSES[arm],
-             'override_timeout_sec': 1800, 'max_timeout_sec': 1800, 'kwargs': kwargs}
+             'override_timeout_sec': settings['max_seconds_per_arm'], 'max_timeout_sec': settings['max_seconds_per_arm'], 'kwargs': kwargs}
     if not gate: agent['model_name'] = lock['model']
     return {'job_name': arm, 'jobs_dir': str(work / 'jobs'), 'n_attempts': 1,
         'n_concurrent_trials': 1, 'retry': {'max_retries': 0},
@@ -272,8 +330,10 @@ def find_trial(job: Path) -> tuple[Path, dict]:
 
 def execute_job(work: Path, lock: dict, arm: str) -> dict:
     from harbor.models.job.config import JobConfig
+    from . import harbor_agents
     config = job_config(work, lock, arm)
     JobConfig.model_validate(config)  # Fail on API/schema drift before model use.
+    getattr(harbor_agents, CLASSES[arm]).preflight(config['agents'][0]['kwargs'])
     job = work / 'jobs' / arm
     if job.exists(): raise ValueError('Refusing to repeat/overwrite a charged or completed job')
     cfg = work / 'configs' / (arm + '.json')
@@ -286,8 +346,32 @@ def execute_job(work: Path, lock: dict, arm: str) -> dict:
     except Exception as exc:
         (work / (arm + '.error.log')).write_text(str(exc))
         if not job.exists(): raise
-    _, result = find_trial(job)
-    return result_row(result, arm)
+    trial_path, result = find_trial(job)
+    row = result_row(result, arm)
+    if gate:
+        probe_path = trial_path.parent / 'agent/public-probe.json'
+        row['public_probe_passed'] = json.loads(probe_path.read_text())['passed'] if probe_path.exists() else None
+    if not gate:
+        from .native_usage import reconcile_sessions
+        usage = reconcile_sessions(trial_path.parent / 'agent/sessions', lock['model'], require_children='multiagent' in arm)
+        if 'multiagent' not in arm and usage['child_count']:
+            usage['complete'] = False
+            usage['errors'].append('Unexpected delegation in a single-worker arm')
+        if 'multiagent' in arm and usage['child_count'] < 2:
+            usage['complete'] = False
+            usage['errors'].append('Two actual child agents required by this arm')
+        dump(trial_path.parent / 'agent/native-usage.json', usage)
+        totals = usage['totals']
+        row.update({'input_tokens': totals['input_tokens'], 'cached_input_tokens': totals['cached_input_tokens'],
+            'output_tokens': totals['output_tokens'], 'total_tokens': totals['total_tokens'] if usage['complete'] else None,
+            'usage_complete': usage['complete'], 'child_agents': usage['child_count'], 'thread_count': usage['thread_count'],
+            'telemetry_errors': usage['errors'], 'controller_status': None, 'human_review_required': None})
+        control_path = trial_path.parent / 'agent/controller-result.json'
+        if control_path.exists():
+            control = json.loads(control_path.read_text())
+            row['controller_status'] = control['status']
+            row['human_review_required'] = control['status'] == 'NEEDS_MANUAL_VERIFICATION'
+    return row
 
 
 def validate(work: Path) -> None:
@@ -295,12 +379,16 @@ def validate(work: Path) -> None:
     rows = [execute_job(work, lock, arm) for arm in ('noop', 'gold')]
     good = rows[0]['independent_reward'] == 0 and rows[1]['independent_reward'] == 1 and all(
         r['exception'] is None and r['verifier_environment'] == 'separate' for r in rows)
+    good = good and rows[0]['public_probe_passed'] is False and rows[1]['public_probe_passed'] is True
     dump(work / 'validation.json', {'passed': good, 'task_digest': lock['task_digest'],
         'implementation_digest': lock['implementation_digest'], 'rows': rows, 'model_calls': 0})
     if not good: raise RuntimeError('No-op/gold validation failed. Do not run contestants or weaken the evaluator.')
 
 
 def run(work: Path) -> None:
+    existing = work / 'comparison.json'
+    if existing.exists():
+        raise ValueError('Experiment already has a run record; preserve it and use a fresh experiment')
     preflight = doctor()
     dump(work / 'preflight.json', preflight)
     if preflight['blockers']:
@@ -312,7 +400,7 @@ def run(work: Path) -> None:
         raise ValueError('Successful current no-model validation required')
     if hashlib.sha256((work / 'public-contract.json').read_bytes()).hexdigest() != lock['contract_digest']:
         raise ValueError('Public contract changed')
-    report = {'status': 'RUNNING', 'purpose': PILOT['purpose'], 'order': lock['order'],
+    report = {'status': 'RUNNING', 'purpose': lock.get('settings', PILOT)['purpose'], 'order': lock['order'],
               'model': lock['model'], 'rows': [], 'comparison_conclusion': None}
     dump(work / 'comparison.json', report)
     for arm in lock['order']:
@@ -330,6 +418,10 @@ def run(work: Path) -> None:
             report['status'] = 'PAUSED_EXECUTION_ERROR'
             dump(work / 'comparison.json', report)
             raise RuntimeError('Execution failure; stopped before spending on more contestants')
+        if 'multiagent' in arm and row.get('child_agents', 0) == 0:
+            report['status'] = 'PAUSED_DELEGATION_UNVERIFIED'
+            dump(work / 'comparison.json', report)
+            raise RuntimeError('No actual child-agent telemetry; stopped before spending on more contestants')
     report['status'] = 'COMPLETED_SMOKE'
     report['comparison_conclusion'] = 'One task, one run per arm: descriptive plumbing results only; no general winner.'
     dump(work / 'comparison.json', report)

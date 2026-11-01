@@ -28,20 +28,23 @@ export async function createRunner(config = {}, { control = command } = {}) {
   }
   if (backend !== 'docker') throw new CstackError('Only docker and linux isolated runners are supported; no host fallback', 'ISOLATION');
   const image = config.image || 'node:22.16.0-bookworm-slim';
-  const dockerEnv = cleanEnv({ HOME: homedir() });
+  const connection = Object.fromEntries(['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']
+    .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
+  const dockerEnv = cleanEnv({ HOME: homedir(), ...connection });
   const inspect = await control(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], { timeoutMs: 15000, env: dockerEnv });
   const imageId = inspect.stdout.trim();
   if (inspect.code !== 0 || !/^sha256:[a-f0-9]{64}$/.test(imageId)) throw new CstackError(`Docker/image unavailable. Explicitly pull or build ${image} first. No automatic pull or host fallback.`, 'ISOLATION');
   const identity = hash(JSON.stringify({ backend, image: imageId, limits: 'read-only,none,65534,128,1g,1cpu', version: 2 }));
   return { backend, identity, image: imageId, async execute(args, { cwd, timeoutMs, input, signal } = {}) {
-    if (cwd.includes(',') || runnerDir.includes(',')) throw new CstackError('Docker bind paths must not contain commas', 'ISOLATION');
+    const candidateDir = await realpath(cwd);
+    if (candidateDir.includes(',') || runnerDir.includes(',')) throw new CstackError('Docker bind paths must not contain commas', 'ISOLATION');
     const name = 'cstack-' + randomUUID();
     const executable = args[0] === process.execPath ? 'node' : args[0];
     const cleanup = ['docker', 'rm', '-f', name];
     const launch = ['docker', 'run', '--rm', '--pull=never', '--name', name, '--network=none', '--read-only', '--init',
       '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=65534:65534', '--pids-limit=128', '--memory=1g', '--cpus=1',
       '--no-healthcheck', '--tmpfs=/tmp:rw,nosuid,nodev,size=134217728,mode=1777',
-      '--mount', `type=bind,src=${cwd},dst=/candidate,readonly`, '--mount', `type=bind,src=${runnerDir},dst=/runner,readonly`,
+      '--mount', `type=bind,src=${candidateDir},dst=/candidate,readonly`, '--mount', `type=bind,src=${runnerDir},dst=/runner,readonly`,
       '--workdir=/candidate', '--env=HOME=/tmp', '--env=TMPDIR=/tmp', '--env=NODE_OPTIONS=', '--env=TZ=UTC',
       '--entrypoint', executable, '-i', imageId, ...args.slice(1)];
     try { return await control(launch, { timeoutMs, input, signal, env: dockerEnv, orphanSafe: true, cleanup }); }

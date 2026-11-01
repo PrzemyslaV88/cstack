@@ -28,6 +28,12 @@ class TempTest(unittest.TestCase):
 
 
 class ProtocolTests(TempTest):
+    def test_known_stdin_status_does_not_hide_usage(self):
+        result = codex_events('Reading additional input from stdin...\n' + self.event({'input_tokens': 10, 'output_tokens': 2}))
+        self.assertTrue(result['usage_complete'])
+    def test_duplicate_completion_is_not_complete_usage(self):
+        event = self.event({'input_tokens': 10, 'output_tokens': 2})
+        self.assertFalse(codex_events(event + '\n' + event)['usage_complete'])
     def event(self, usage):
         return json.dumps({'type': 'turn.completed', 'usage': usage})
     def test_empty_usage_unknown(self):
@@ -138,10 +144,36 @@ class ArchiveTests(TempTest):
 
 
 class RunnerTests(TempTest):
+    def test_existing_results_are_preserved_before_preflight(self):
+        result = {'status': 'COMPLETED_SMOKE', 'rows': [{'independent_reward': 1}]}
+        (self.root / 'comparison.json').write_text(json.dumps(result))
+        with patch.object(lab, 'doctor') as doctor:
+            with self.assertRaisesRegex(ValueError, 'already has a run record'): lab.run(self.root)
+            doctor.assert_not_called()
+        self.assertEqual(json.loads((self.root / 'comparison.json').read_text()), result)
+    def test_five_arm_settings_are_applied(self):
+        lock = {'model': 'gpt-6.1-sol', 'codex_version': '0.163.0', 'task_path': '/task', 'pstack_path': '/pstack',
+                'settings': {'max_seconds_per_arm': 7, 'reasoning': 'high'}}
+        for arm in (*lab.ARMS, 'plain-codex-multiagent', 'pstack-codex-multiagent'):
+            cfg = lab.job_config(self.root, lock, arm)
+            self.assertEqual(cfg['agents'][0]['override_timeout_sec'], 7)
+            self.assertEqual(cfg['agents'][0]['kwargs']['trial_seconds'], 7)
+            self.assertEqual(cfg['agents'][0]['kwargs']['reasoning_effort'], 'high')
+    def test_upstream_dockerfile_uses_reviewed_task_image(self):
+        environment = self.root / 'environment'; environment.mkdir()
+        image = 'swebench/sweb.eval.x86_64.sympy_1776_sympy-20590:latest'
+        (environment / 'Dockerfile').write_text('# FROM unrelated\nFROM ' + image + '\nWORKDIR /testbed\n')
+        self.assertEqual(lab.task_image(self.root, None), image)
+        (environment / 'Dockerfile').write_text('FROM unrelated:latest\n')
+        with self.assertRaisesRegex(ValueError, 'Unsupported upstream Dockerfile'):
+            lab.task_image(self.root, None)
+    def test_configured_image_needs_no_recipe_inference(self):
+        self.assertEqual(lab.task_image(self.root, 'sha256:explicit'), 'sha256:explicit')
     def test_credentials_not_forwarded(self):
-        with patch.dict(os.environ, {'OPENAI_API_KEY': 'CANARY', 'ANTHROPIC_API_KEY': 'CANARY', 'NODE_OPTIONS': 'bad'}):
+        with patch.dict(os.environ, {'OPENAI_API_KEY': 'CANARY', 'ANTHROPIC_API_KEY': 'CANARY', 'NODE_OPTIONS': 'bad', 'DOCKER_DEFAULT_PLATFORM': 'linux/amd64'}):
             env = lab.child_env()
         self.assertNotIn('OPENAI_API_KEY', env); self.assertNotIn('NODE_OPTIONS', env)
+        self.assertNotIn('DOCKER_DEFAULT_PLATFORM', env)
     def test_all_arms_equal_time_model_and_no_retries(self):
         lock = {'model': 'test-model', 'codex_version': '0.1.0', 'task_path': '/task', 'pstack_path': '/pstack'}
         for arm in lab.ARMS:
@@ -181,8 +213,9 @@ class BridgeTests(TempTest):
         (repo / 'calc.mjs').write_text('export const add=(a,b)=>a-b;\n')
         for args in (['init', '-q'], ['config', 'user.name', 'Test'], ['config', 'user.email', 'test@example.invalid'], ['add', '.'], ['commit', '-qm', 'baseline']):
             subprocess.run(['git', '-C', str(repo), *args], check=True, capture_output=True)
+        backend = os.environ.get('CSTACK_TEST_RUNNER', 'linux' if sys.platform == 'linux' else 'docker')
         contract = {'type': 'FIX', 'goal': 'Fix addition in the fixture', 'attempt_limit': 1,
-            'runner': {'backend': os.environ.get('CSTACK_TEST_RUNNER', 'linux'), **({'image': os.environ.get('CSTACK_TEST_IMAGE', 'node:22.16.0-bookworm-slim')} if os.environ.get('CSTACK_TEST_RUNNER') == 'docker' else {})}, 'criteria': [{'id': 'ADD', 'kind': 'probe', 'text': 'Addition works',
+            'runner': {'backend': backend, **({'image': os.environ.get('CSTACK_TEST_IMAGE', 'node:22.16.0-bookworm-slim')} if backend == 'docker' else {})}, 'criteria': [{'id': 'ADD', 'kind': 'probe', 'text': 'Addition works',
             'argv': ['node', '--input-type=module', '-e', "import {add} from './calc.mjs'; console.log(JSON.stringify(add(2,3)))"],
             'cases': [{'stdin': '', 'expect_json': 5}]}]}
         proc = subprocess.Popen(['node', str(lab.ROOT / 'bench/cstack_bridge.mjs')], stdin=subprocess.PIPE,

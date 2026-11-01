@@ -1,6 +1,9 @@
 import { command, cleanEnv } from './process.mjs';
 import { CstackError, redact, safeId } from './util.mjs';
 import { homedir } from 'node:os';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
 const limits = new Set(['rate_limit_exceeded', 'usage_limit_reached', 'insufficient_quota', 'credits_exhausted']);
 export function parseCodexEvents(lines) {
   let thread = null, complete = false, failed = false, quota = false, malformed = false;
@@ -23,7 +26,7 @@ export function codexArgs(run) {
   const settings = {
     forced_login_method: 'chatgpt', model_provider: 'openai', approval_policy: 'never', sandbox_mode: 'workspace-write',
     'sandbox_workspace_write.network_access': false, 'sandbox_workspace_write.exclude_slash_tmp': true,
-    'sandbox_workspace_write.exclude_tmpdir_env_var': true, 'features.multi_agent': false, 'agents.enabled': false,
+    'sandbox_workspace_write.exclude_tmpdir_env_var': true, 'features.multi_agent': false, 'features.multi_agent_v2': false, 'agents.enabled': false,
     'features.hooks': false, 'features.plugins': false, 'features.apps': false, 'features.goals': false,
     web_search: 'disabled', allow_login_shell: false, 'shell_environment_policy.inherit': 'none',
     'shell_environment_policy.set': { PATH: cleanEnv().PATH }, model_reasoning_effort: run.contract.reasoning || 'medium'
@@ -31,20 +34,27 @@ export function codexArgs(run) {
   // TOML inline tables use '=' rather than JSON ':'; primitive settings are JSON-compatible TOML.
   const override = Object.entries(settings).flatMap(([k, v]) => ['-c', k + '=' + (typeof v === 'object' ? '{ PATH = ' + JSON.stringify(v.PATH) + ' }' : JSON.stringify(v))]);
   if (run.contract.model) override.push('-c', 'model=' + JSON.stringify(run.contract.model));
-  return ['--ignore-user-config', '--ignore-rules', ...override, 'exec', '--json', '--sandbox', 'workspace-write', '--cd', run.worktree,
+  return ['--no-daemon', ...override, 'exec', '--ignore-user-config', '--ignore-rules', '--json', '--sandbox', 'workspace-write', '--cd', run.worktree,
     ...(run.thread_id ? ['resume', run.thread_id] : []), '-'];
 }
-function workerEnv() {
+function workerEnv(extra = {}) {
   // API keys, cloud tokens, NODE_OPTIONS and proxies are never forwarded.
-  return cleanEnv({ HOME: homedir(), ...(process.env.CODEX_HOME ? { CODEX_HOME: process.env.CODEX_HOME } : {}) });
+  return cleanEnv({ HOME: homedir(), ...(process.env.CODEX_HOME ? { CODEX_HOME: process.env.CODEX_HOME } : {}), ...extra });
 }
 export async function preflightCodex() {
   const bin = process.env.CSTACK_CODEX_BIN || 'codex';
-  const help = await command([bin, '--help'], { env: workerEnv(), timeoutMs: 10000 });
+  const help = await command([bin, 'exec', '--help'], { env: workerEnv(), timeoutMs: 10000 });
   if (help.code !== 0) throw new CstackError('Codex unavailable. Install/authenticate the CLI; no paid API fallback is supported.', 'AUTH');
   if (!help.stdout.includes('--ignore-user-config') || !help.stdout.includes('--ignore-rules')) throw new CstackError('Codex CLI lacks controlled-config flags; upgrade before running cStack.', 'CAPABILITY');
-  const controls = ['multi_agent', 'hooks', 'plugins', 'apps', 'goals'];
-  const features = await command([bin, '--ignore-user-config', '--ignore-rules', ...controls.flatMap(name => ['-c', `features.${name}=false`]), 'features', 'list'], { env: workerEnv(), timeoutMs: 10000 });
+  const controls = ['multi_agent', 'multi_agent_v2', 'hooks', 'plugins', 'apps', 'goals'];
+  // Ignore-config flags belong to exec, not to the root CLI/features command.
+  // Check the controls in an empty, temporary config home; keep auth in its normal home.
+  const configHome = await mkdtemp(join(tmpdir(), 'cstack-preflight-'));
+  let features;
+  try {
+    features = await command([bin, '--no-daemon', ...controls.flatMap(name => ['-c', `features.${name}=false`]), 'features', 'list'],
+      { env: workerEnv({ CODEX_HOME: configHome }), timeoutMs: 10000 });
+  } finally { await rm(configHome, { recursive: true, force: true }); }
   if (features.code !== 0 || controls.some(name => !features.stdout.split('\n').some(line => new RegExp(`^${name}\\s+.*\\bfalse\\s*$`).test(line.trim())))) {
     throw new CstackError('Cannot confirm disabled subagents/hooks/plugins/apps/goals in the installed Codex CLI.', 'CAPABILITY');
   }

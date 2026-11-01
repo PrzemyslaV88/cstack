@@ -4,7 +4,7 @@
   "task": "swe-bench/sympy__sympy-20590",
   "task_ref": "latest",
   "harbor_commit": "5eb713ff9500daced4e143b98765a7c732744a1b",
-  "harbor_version": "0.20.0",
+  "harbor_version": "0.25.0",
   "pstack_commit": "4dd1d05818d19792e7cd6e818f1667f95f7e1dbe",
   "cstack_base_commit": "023125b373a4f20d96df5d7b85badba248794cbc",
   "arms": ["plain-codex", "pstack-adapted-single-worker", "cstack-harbor"],

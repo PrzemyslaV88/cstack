@@ -87,6 +87,8 @@ test('Codex policy disables API auth, subagents, hooks and inherited shell envir
   const flags = codexArgs({ worktree: '/safe', contract: contract(), thread_id: null });
   for (const value of ['forced_login_method="chatgpt"', 'features.multi_agent=false', 'agents.enabled=false', 'features.hooks=false', 'shell_environment_policy.inherit="none"', 'sandbox_workspace_write.network_access=false']) assert.ok(flags.includes(value), value);
   assert.ok(flags.includes('--ignore-user-config')); assert.ok(flags.includes('--ignore-rules'));
+  assert.ok(flags.indexOf('--ignore-user-config') > flags.indexOf('exec'));
+  assert.ok(flags.includes('features.multi_agent_v2=false')); assert.ok(flags.includes('--no-daemon'));
 });
 test('Codex missing completion or malformed protocol is not a successful worker turn', () => {
   assert.equal(parseCodexEvents(['not-json']).protocol_error, true);

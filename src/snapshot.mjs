@@ -3,6 +3,7 @@ import { join, resolve, dirname, relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { command, cleanEnv } from './process.mjs';
 import { hash, json, requireThat, CstackError } from './util.mjs';
+import { credentialPath, normalizeTestFixtures } from './file-policy.mjs';
 export async function git(cwd, ...args) {
   const out = await command(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd, env: cleanEnv(), timeoutMs: 30_000 });
   if (out.code !== 0) throw new CstackError(`git ${args[0]}: ${out.stderr.trim()}`, 'GIT');
@@ -24,17 +25,19 @@ export async function changedPaths(repo, base = 'HEAD') {
   return [...new Set([...tracked.split('\0'), ...extras.split('\0')].filter(Boolean))].sort();
 }
 function inside(root, path) { const rel = relative(root, path); return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/')); }
-const credentialPath = p => /(^|\/)(\.env(?:\.(?!example$|sample$)[^/]*)?|auth\.json|\.npmrc|id_rsa|id_ed25519)$|\.(pem|key|p12)$/i.test(p);
 
 // Includes ignored inputs and file modes. Symlinks may only resolve inside the candidate.
-export async function manifest(root, { rejectCredentials = true, maxFiles = 30_000, maxBytes = 256 * 1024 * 1024 } = {}) {
+export async function manifest(root, { rejectCredentials = true, approved_test_fixtures = [], maxFiles = 30_000, maxBytes = 256 * 1024 * 1024 } = {}) {
   root = await realpath(root); const entries = []; let total = 0;
+  const fixtures = new Map(normalizeTestFixtures(approved_test_fixtures).map(x => [x.path, x]));
   async function visit(dir, prefix = '') {
     for (const name of (await readdir(dir)).sort()) {
       if (!prefix && name === '.git') continue;
       const path = prefix ? `${prefix}/${name}` : name, full = join(dir, name), info = await lstat(full);
       requireThat(!path.includes('\n') && !path.includes('\r') && !path.includes('\0'), 'Unsupported control characters in path', 'SNAPSHOT');
-      requireThat(!rejectCredentials || !credentialPath(path), `Potential credential file ${path}: remove it from the candidate; no secret mounts are supported`, 'SECRET');
+      const fixture = fixtures.get(path);
+      requireThat(!rejectCredentials || !credentialPath(path) || (fixture && info.isFile()),
+        `Potential credential file ${path}: only an exact, reviewed test fixture can be admitted; no secret mounts are supported`, 'SECRET');
       requireThat(entries.length < maxFiles, 'Snapshot file limit exceeded; use a prebuilt dependency image', 'SNAPSHOT');
       const item = { path, mode: info.mode & 0o777 };
       if (info.isSymbolicLink()) {
@@ -46,21 +49,25 @@ export async function manifest(root, { rejectCredentials = true, maxFiles = 30_0
       else {
         requireThat(info.isFile(), `Special file denied: ${path}`, 'SNAPSHOT');
         total += info.size; requireThat(total <= maxBytes, 'Snapshot byte limit exceeded; use a prebuilt dependency image', 'SNAPSHOT');
-        entries.push({ ...item, type: 'file', bytes: info.size, sha256: hash(await readFile(full)) });
+        const sha256 = hash(await readFile(full));
+        requireThat(!fixture || sha256 === fixture.sha256, `Approved test fixture changed: ${path}`, 'SECRET');
+        entries.push({ ...item, type: 'file', bytes: info.size, sha256 });
       }
     }
   }
-  await visit(root); return entries;
+  await visit(root);
+  for (const p of fixtures.keys()) requireThat(entries.some(e => e.path === p && e.type === 'file'), `Approved test fixture missing: ${p}`, 'SECRET');
+  return entries;
 }
-export async function candidateIdentity(repo) {
+export async function candidateIdentity(repo, policy = {}) {
   const head = await git(repo, 'rev-parse', 'HEAD');
-  const entries = await manifest(repo);
+  const entries = await manifest(repo, policy);
   requireThat(head === await git(repo, 'rev-parse', 'HEAD'), 'HEAD changed while snapshotting', 'INTEGRITY');
   return { head, entries, digest: hash(json({ head, entries })) };
 }
-export async function fingerprint(repo) { return (await candidateIdentity(repo)).digest; }
+export async function fingerprint(repo, policy = {}) { return (await candidateIdentity(repo, policy)).digest; }
 export async function sealCandidate(run, home) {
-  const source = await candidateIdentity(run.worktree);
+  const source = await candidateIdentity(run.worktree, run.contract);
   requireThat(source.head === run.base, 'Worktree HEAD moved; restore the original base before resuming', 'INTEGRITY');
   const dir = join(home, 'runs', run.id, 'snapshots', randomUUID());
   await mkdir(dir, { recursive: true, mode: 0o755 });
@@ -75,11 +82,11 @@ export async function sealCandidate(run, home) {
         await writeFile(destination, bytes, { mode: e.mode & 0o111 ? 0o755 : 0o644 });
       }
     }
-    requireThat((await fingerprint(run.worktree)) === source.digest, 'Candidate changed during seal', 'INTEGRITY');
-    const artifact = await manifest(dir), artifactDigest = hash(json(artifact));
+    requireThat((await fingerprint(run.worktree, run.contract)) === source.digest, 'Candidate changed during seal', 'INTEGRITY');
+    const artifact = await manifest(dir, run.contract), artifactDigest = hash(json(artifact));
     const stable = join(home, 'runs', run.id, 'snapshots', source.digest);
     let existing = false;
-    try { existing = true; requireThat(hash(json(await manifest(stable))) === artifactDigest, 'Stored snapshot was altered', 'INTEGRITY'); }
+    try { existing = true; requireThat(hash(json(await manifest(stable, run.contract))) === artifactDigest, 'Stored snapshot was altered', 'INTEGRITY'); }
     catch (e) { if (e.code === 'ENOENT') existing = false; else throw e; }
     if (existing) await rm(dir, { recursive: true, force: true });
     else await rename(dir, stable);

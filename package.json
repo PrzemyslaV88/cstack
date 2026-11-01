@@ -1,6 +1,6 @@
 {
   "name": "@cstack/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Single-worker, isolated, evidence-gated Codex engineering controller",
   "type": "module",
   "private": true,
@@ -9,7 +9,12 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "check": "node scripts/check.mjs",
-    "test:live": "node scripts/live-smoke.mjs"
+    "bench": "bash scripts/comparison.sh",
+    "bench:batch": "bash scripts/batch.sh",
+    "bench:multiagent": "bash scripts/multiagent.sh",
+    "test:live": "node scripts/live-smoke.mjs",
+    "plugin:build": "node scripts/build-plugin.mjs",
+    "plugin:install": "node scripts/install-plugin.mjs"
   },
   "license": "MIT"
 }
