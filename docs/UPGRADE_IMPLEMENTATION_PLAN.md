@@ -982,12 +982,14 @@ backup location. A crash after writes but before success must be discoverable.
 
 `delivery recover` inspects each path. If all match postimages and index/HEAD match,
 finish verification of delivery postconditions and mark applied. If all match
-preimages, mark rolled back. For a mixture containing only expected pre/post images,
-restore preimages only for paths matching the known cStack postimage and verify the
-result. If any path has a third value, stop `RECOVERY_REQUIRED`, preserve both its
-current bytes and backups, and list the conflicts; never overwrite it automatically.
-A second recovery invocation is idempotent. A repeated apply to an already matching
-delivery returns `ALREADY_APPLIED` without changes.
+preimages, mark rolled back. For a mixture containing expected pre/post images, stop
+`RECOVERY_REQUIRED`, preserve every current byte and backup, and list the postimage
+paths that need deliberate manual restoration. If any path has a third value, use the
+same preserve-and-report behavior. Recovery never performs pathname writes or deletions
+after an interrupted apply because the JavaScript runtime cannot anchor them with
+descriptor-relative `openat`/`unlinkat` operations. A second recovery invocation is
+idempotent. A repeated apply to an already matching delivery returns `ALREADY_APPLIED`
+without changes.
 
 Tests `DELIVERY-01..12`: text/add/delete/binary/mode changes; clean check no writes;
 changed base/index/source conflict; ignored-file collision; symlink/submodule/path

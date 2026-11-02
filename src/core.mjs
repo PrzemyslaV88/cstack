@@ -15,6 +15,7 @@ import {measurePhase} from './journey.mjs';
 import {buildContext,utf8Lines} from './context.mjs';
 import {immutableJson} from './artifacts.mjs';
 import { classifyUsage, accountingForRun } from './usage.mjs';
+import {markdownCode,markdownBlock} from './markdown.mjs';
 export { CstackError, dataHome, normalizeContract, loadRun, openStore, fingerprint, changedPaths, codexWorker, codeMap };
 export { command } from './process.mjs';
 const SUCCESS = new Set(['VERIFIED', 'INVESTIGATED']);
@@ -299,30 +300,30 @@ export async function approveRun(id, { criterion, snapshot, note, home = dataHom
 }
 export async function writeReport(run, home = dataHome()) {
   const status = await effectiveStatus(run), totals = usageTotals(run.usage), review = reviewDetails(run);
-  const lines = [`# cStack ${run.id}`, '', `Outcome: **${status}**`, `Goal: ${run.contract.goal}`, `Reason: ${run.reason || 'Not evaluated'}`,
-    `Worktree: ${run.worktree}`, `Base: ${run.base}`, `Candidate: ${run.snapshot?.source_digest || 'not sealed'}`,
-    `Contract: ${run.contract_hash}`, `Runner: ${run.contract.runner.backend} / ${run.runner_identity || 'not checked'}`,
-    `Reserved worker invocations: ${run.attempts.length}/${run.contract.budget.max_attempts}`, `Active time: ${run.spent_ms} ms`,
-    `Input tokens: ${totals.input_tokens}; cached subset: ${totals.cached_input_tokens}; output: ${totals.output_tokens}; reasoning subset: ${totals.reasoning_output_tokens}`,
+  const lines = [`# cStack ${markdownCode(run.id)}`, '', `Outcome: ${markdownCode(status)}`, `Goal: ${markdownCode(run.contract.goal)}`, `Reason: ${markdownCode(run.reason || 'Not evaluated')}`,
+    `Worktree: ${markdownCode(run.worktree)}`, `Base: ${markdownCode(run.base)}`, `Candidate: ${markdownCode(run.snapshot?.source_digest || 'not sealed')}`,
+    `Contract: ${markdownCode(run.contract_hash)}`, `Runner: ${markdownCode(run.contract.runner.backend)} / ${markdownCode(run.runner_identity || 'not checked')}`,
+    `Reserved worker invocations: ${markdownCode(run.attempts.length)}/${markdownCode(run.contract.budget.max_attempts)}`, `Active time: ${markdownCode(run.spent_ms)} ms`,
+    `Input tokens: ${markdownCode(totals.input_tokens)}; cached subset: ${markdownCode(totals.cached_input_tokens)}; output: ${markdownCode(totals.output_tokens)}; reasoning subset: ${markdownCode(totals.reasoning_output_tokens)}`,
     'Subscription allowance remaining: **unknown**. Token counters are not subscription allowance. A completed turn can overshoot the observed-token admission ceiling.',
-    `Invocations without reported usage: ${run.attempts.filter(a => a.usage_unknown).length}`,
-    `Usage accounting: ${JSON.stringify(accountingForRun(run.attempts))}`,
+    `Invocations without reported usage: ${markdownCode(run.attempts.filter(a => a.usage_unknown).length)}`,
+    `Usage accounting: ${markdownCode(JSON.stringify(accountingForRun(run.attempts)))}`,
     '', '## Checks and review',
-    `Automated checks for the last sealed candidate: **${review.automated_checks}**`,
-    `Checked snapshot: ${review.snapshot || 'not checked'}`,
+    `Automated checks for the last sealed candidate: ${markdownCode(review.automated_checks)}`,
+    `Checked snapshot: ${markdownCode(review.snapshot || 'not checked')}`,
     ...(status === 'NEEDS_MANUAL_VERIFICATION' && review.automated_checks === 'PASS' ? ['The fix passed its automated checks. Human review is still required; this is not a failed coding attempt or a final approval.'] : []),
-    ...review.pending.map(r => `- Review ${r.criterion}: ${r.reason}${r.paths.length ? ' — ' + r.paths.join(', ') : ''}`),
-    ...review.added_tests.map(p => '- Added supporting test: ' + p),
-    ...review.approved_test_fixtures.map(f => `- Unchanged approved test fixture: ${f.path} (${f.sha256}) — ${f.reason}`),
+    ...review.pending.map(r => `- Review ${markdownCode(r.criterion)}: ${markdownCode(r.reason)}${r.paths.length ? ' — ' + r.paths.map(markdownCode).join(', ') : ''}`),
+    ...review.added_tests.map(p => '- Added supporting test: ' + markdownCode(p)),
+    ...review.approved_test_fixtures.map(f => `- Unchanged approved test fixture: ${markdownCode(f.path)} (${markdownCode(f.sha256)}) — ${markdownCode(f.reason)}`),
     '', '## Work measured',
-    `Phase milliseconds: ${JSON.stringify(run.metrics || {})}`,
-    ...run.attempts.map(a => `- Attempt ${a.number}: ${a.prompt_mode || 'initial'} prompt, ${a.prompt_chars ?? 'unknown'} characters, ${a.context_files ?? 'unknown'} focused files; ${a.worker_ms ?? 'unknown'} worker ms`),
+    `Phase milliseconds: ${markdownCode(JSON.stringify(run.metrics || {}))}`,
+    ...run.attempts.map(a => `- Attempt ${markdownCode(a.number)}: ${markdownCode(a.prompt_mode || 'initial')} prompt, ${markdownCode(a.prompt_chars ?? 'unknown')} characters, ${markdownCode(a.context_files ?? 'unknown')} focused files; ${markdownCode(a.worker_ms ?? 'unknown')} worker ms`),
     '', '## Outcomes',
-    ...run.contract.criteria.map(c => `- ${c.id}: ${run.results[c.id]?.status || 'NOT_RUN'} (${c.required ? 'required' : 'optional'}; ${run.results[c.id]?.strength || c.kind}) — ${c.text}`),
-    '', '## Changed artifacts', ...run.changed_paths.map(p => '- ' + p), '', '## Independent failure feedback', failurePacket(run), '',
+    ...run.contract.criteria.map(c => `- ${markdownCode(c.id)}: ${markdownCode(run.results[c.id]?.status || 'NOT_RUN')} (${markdownCode(c.required ? 'required' : 'optional')}; ${markdownCode(run.results[c.id]?.strength || c.kind)}) — ${markdownCode(c.text)}`),
+    '', '## Changed artifacts', ...run.changed_paths.map(p => '- ' + markdownCode(p)), '', '## Independent failure feedback', markdownBlock(failurePacket(run)), '',
     'VERIFIED covers the declared observable cases on this candidate, not all possible behavior. Tests reported by candidate processes are not, alone, sufficient proof. No push, merge, deployment or paid API fallback was performed.', ''];
   const dir = join(home, 'runs', run.id); await mkdir(dir, { recursive: true, mode: 0o700 });
-  await writeFile(join(dir, 'report.md'), redact(lines.join('\n')), { mode: 0o600 }); return redact(lines.join('\n'));
+  const report=lines.join('\n');await writeFile(join(dir, 'report.md'),report,{mode:0o600});return report;
 }
 export async function exportCandidate(id, destination, home = dataHome()) {
   const token = lockRun(id, home);

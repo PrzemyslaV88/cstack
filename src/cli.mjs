@@ -10,7 +10,7 @@ import { dependencyGraph } from './code-map.mjs';
 import { analyzeStack, analyzeTrace } from './stack-analysis.mjs';
 import { graphMarkdown, stackMarkdown, exportAnalysis, readTraceFile } from './analysis-report.mjs';
 import {upgradeFlags,upgradeCommand} from './cli-upgrade.mjs';
-import {renderResult,errorResult} from './cli-output.mjs';
+import {renderResult,errorResult,plain} from './cli-output.mjs';
 import { dataHome } from './util.mjs';
 const version=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
 const help = `cStack ${version} — single-worker repairs and read-only project analysis
@@ -126,7 +126,7 @@ async function main() {
   }
   if (op === 'evidence') {
     const proof = run.results[flags.criterion]; requireThat(proof?.output_hash && /^[a-f0-9]{64}$/.test(proof.output_hash), 'No recorded command evidence for this criterion');
-    console.log(await readFile(join(dataHome(), 'runs', run.id, 'evidence', proof.output_hash + '.log'), 'utf8')); return;
+    console.log(plain(await readFile(join(dataHome(), 'runs', run.id, 'evidence', proof.output_hash + '.log'), 'utf8'))); return;
   }
   if (op === 'export') { requireThat(flags.out, '--out required'); console.log(await exportCandidate(run.id, flags.out)); return; }
   throw new Error('Unknown command: ' + op);

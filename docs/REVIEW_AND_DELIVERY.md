@@ -33,11 +33,14 @@ node src/cli.mjs delivery recover RUN_ID --delivery DELIVERY_ID
 ```
 
 Recovery recognizes the known preimages and postimages. A complete postimage can be
-confirmed; a mixture can be rolled back. A third-value edit is preserved and reported
-for manual conflict resolution. Repeated apply/recovery is idempotent after successful
-postcondition checks. Avoid editing source concurrently: cStack's lock coordinates
-cStack operations, not every editor on the computer. This is not an OS-level multi-file
-transaction. Never delete recovery artifacts to bypass a conflict.
+confirmed and a complete preimage can be marked rolled back. A mixed state is preserved
+and its remaining postimage paths are reported for deliberate manual restoration from
+the durable backups or candidate patch. cStack never performs automatic pathname writes
+or deletions after an interrupted apply. Third-value edits are likewise preserved and
+reported. Repeated recovery is idempotent after successful postcondition checks. Avoid
+editing source concurrently: cStack's lock coordinates cStack operations, not every
+editor on the computer. This is not an OS-level multi-file transaction. Never delete
+recovery artifacts to bypass a conflict.
 
 ## Start with existing edits in 0.5
 

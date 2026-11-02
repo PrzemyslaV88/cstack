@@ -1,9 +1,10 @@
-import { mkdir, readdir, lstat, readFile, readlink, realpath, writeFile, chmod, symlink, rm, rename, access } from 'node:fs/promises';
+import { mkdir, readdir, lstat, readlink, realpath, writeFile, chmod, symlink, rm, rename, access } from 'node:fs/promises';
 import { join, resolve, dirname, relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { command, cleanEnv } from './process.mjs';
 import { hash, json, requireThat, CstackError, digestOf, relativePath, compareText } from './util.mjs';
 import { credentialPath, normalizeTestFixtures } from './file-policy.mjs';
+import { readPinnedFile } from './safe-fs.mjs';
 export async function git(cwd, ...args) {
   const out = await command(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', ...args], { cwd, env: cleanEnv({GIT_OPTIONAL_LOCKS:'0'}), timeoutMs: 30_000 });
   if (out.code !== 0) throw new CstackError(`git ${args[0]}: ${out.stderr.trim()}`, 'GIT');
@@ -73,8 +74,8 @@ async function originInventory(root,policy) {
       try{requireThat(inside(root,await realpath(full)),'Escaping symlink denied: '+path,'SOURCE_SYMLINK_UNSUPPORTED');}catch(e){if(e.code!=='ENOENT')throw e;}
       entries.push({path,mode:0o777,type:'symlink',target});
     }else{
-      requireThat(stat.isFile(),'Unsupported origin file: '+path,'SOURCE_SPECIAL_UNSUPPORTED');bytes+=stat.size;requireThat(bytes<=256*1024*1024,'Origin byte limit exceeded','SNAPSHOT');
-      const content=await readFile(full),after=await lstat(full);requireThat(stat.size===content.length&&stat.mtimeMs===after.mtimeMs&&stat.ino===after.ino&&stat.mode===after.mode,'Source changed during capture','SOURCE_CHANGED_DURING_CAPTURE');
+      requireThat(stat.isFile(),'Unsupported origin file: '+path,'SOURCE_SPECIAL_UNSUPPORTED');
+      const content=await readPinnedFile(root,path,{expected:stat,maxBytes:256*1024*1024-bytes,code:'SOURCE_CHANGED_DURING_CAPTURE',message:'Source changed during capture'});bytes+=content.length;
       const sha256=hash(content);requireThat(!fixtures.has(path)||fixtures.get(path).sha256===sha256,'Approved test fixture changed: '+path,'SECRET');entries.push({path,mode:stat.mode&0o111?0o755:0o644,type:'file',bytes:content.length,sha256});
     }
   }
@@ -90,7 +91,7 @@ export async function overlayOrigin(worktree,origin,policy={}) {
   for(const name of await readdir(worktree))if(name!=='.git')await rm(join(worktree,name),{recursive:true,force:true});
   for(const e of origin.entries){const dest=join(worktree,e.path);await mkdir(dirname(dest),{recursive:true,mode:0o755});
     if(e.type==='symlink')await symlink(e.target,dest);
-    else{const content=await readFile(join(origin.root,e.path));requireThat(hash(content)===e.sha256,'Source changed while copying','SOURCE_CHANGED_DURING_CAPTURE');await writeFile(dest,content,{mode:e.mode});await chmod(dest,e.mode);}}
+    else{const content=await readPinnedFile(origin.root,e.path,{maxBytes:e.bytes,code:'SOURCE_CHANGED_DURING_CAPTURE',message:'Source changed while copying'});requireThat(hash(content)===e.sha256,'Source changed while copying','SOURCE_CHANGED_DURING_CAPTURE');await writeFile(dest,content,{mode:e.mode});await chmod(dest,e.mode);}}
   const overlay=(await manifest(worktree,policy)).filter(e=>e.type!=='directory').sort((a,b)=>compareText(a.path,b.path));
   requireThat(digestOf(overlay)===origin.inventory_digest,'Working-copy overlay differs from capture','SOURCE_CHANGED_DURING_CAPTURE');
   const after=await captureOrigin(origin.root,policy);requireThat(digestOf(after)===digestOf(origin),'Source changed during capture','SOURCE_CHANGED_DURING_CAPTURE');
@@ -128,10 +129,11 @@ export async function manifest(root, { rejectCredentials = true, approved_test_f
       } else if (info.isDirectory()) { entries.push({ ...item, type: 'directory' }); await visit(full, path); }
       else {
         requireThat(info.isFile(), `Special file denied: ${path}`, 'SNAPSHOT');
-        total += info.size; requireThat(total <= maxBytes, 'Snapshot byte limit exceeded; use a prebuilt dependency image', 'SNAPSHOT');
-        const sha256 = hash(await readFile(full));
+        const content=await readPinnedFile(root,path,{expected:info,maxBytes:maxBytes-total,code:'SNAPSHOT',message:`File changed during snapshot: ${path}`});
+        total += content.length;
+        const sha256 = hash(content);
         requireThat(!fixture || sha256 === fixture.sha256, `Approved test fixture changed: ${path}`, 'SECRET');
-        entries.push({ ...item, type: 'file', bytes: info.size, sha256 });
+        entries.push({ ...item, type: 'file', bytes: content.length, sha256 });
       }
     }
   }
@@ -157,7 +159,7 @@ export async function sealCandidate(run, home) {
       if (e.type === 'directory') { await mkdir(destination, { recursive: true, mode: 0o755 }); }
       else if (e.type === 'symlink') await symlink(e.target, destination);
       else {
-        const bytes = await readFile(join(run.worktree, e.path));
+        const bytes = await readPinnedFile(run.worktree,e.path,{maxBytes:e.bytes,code:'INTEGRITY',message:'Candidate changed while copying'});
         requireThat(hash(bytes) === e.sha256, 'Candidate changed while copying', 'INTEGRITY');
         await writeFile(destination, bytes, { mode: e.mode & 0o111 ? 0o755 : 0o644 });
       }

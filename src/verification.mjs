@@ -6,7 +6,7 @@ import { hash, json, redact, requireThat } from './util.mjs';
 import {executeTestSuite} from './test-adapters.mjs';
 import { manifest, fingerprint } from './snapshot.mjs';
 export const verifierIdentity = async () => hash((await Promise.all(
-  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs', './test-adapters.mjs', './runners/pytest-wrapper.py', './runners/vitest-wrapper.mjs', './runners/stage-project.mjs', './sandbox.mjs', './process.mjs', './runners/guardian.mjs', './runners/linux.sh']
+  ['./verification.mjs', './snapshot.mjs', './safe-fs.mjs', './file-policy.mjs', './runners/node-reporter.mjs', './test-adapters.mjs', './runners/pytest-wrapper.py', './runners/vitest-wrapper.mjs', './runners/stage-project.mjs', './sandbox.mjs', './process.mjs', './runners/guardian.mjs', './runners/linux.sh']
     .map(p => readFile(fileURLToPath(new URL(p, import.meta.url)))))).map(b => hash(b)).join(':'));
 export function parseTestReport(stdout, expected) {
   let events;

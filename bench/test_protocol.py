@@ -169,6 +169,13 @@ class RunnerTests(TempTest):
             lab.task_image(self.root, None)
     def test_configured_image_needs_no_recipe_inference(self):
         self.assertEqual(lab.task_image(self.root, 'sha256:explicit'), 'sha256:explicit')
+    def test_grader_uv_install_is_content_verified(self):
+        recipe = lab.grader_dockerfile('python@sha256:reviewed', 'python3')
+        self.assertNotIn('install.sh | sh', recipe)
+        self.assertIn(lab.UV_WHEEL_URL, recipe)
+        self.assertIn(lab.UV_WHEEL_SHA256, recipe)
+        self.assertIn('sha256sum -c -', recipe)
+        self.assertIn('pip install --no-index --no-deps', recipe)
     def test_credentials_not_forwarded(self):
         with patch.dict(os.environ, {'OPENAI_API_KEY': 'CANARY', 'ANTHROPIC_API_KEY': 'CANARY', 'NODE_OPTIONS': 'bad', 'DOCKER_DEFAULT_PLATFORM': 'linux/amd64'}):
             env = lab.child_env()

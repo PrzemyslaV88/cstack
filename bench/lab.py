@@ -23,6 +23,9 @@ from .protocol import ARMS, blocked_report, digest_tree, dump, execution_order, 
 
 ROOT = Path(__file__).resolve().parents[1]
 PILOT = json.loads((ROOT / 'bench/pilot.json').read_text())
+UV_WHEEL = 'uv-0.7.13-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl'
+UV_WHEEL_URL = 'https://files.pythonhosted.org/packages/d8/ef/f2e96cec5e4cf65d7fde89b5dcf9540ddacf42e8e39de2fa0332614e55a8/' + UV_WHEEL
+UV_WHEEL_SHA256 = '5786a29e286f2cc3cbda13a357fd9a4dd5bf1d7448a9d3d842b26b4f784a3a86'
 CLASSES = {'plain-codex': 'PlainCodex', 'pstack-adapted-single-worker': 'PstackAdapted',
            'cstack-harbor': 'CstackHarbor', 'plain-codex-multiagent': 'PlainMultiAgent',
            'pstack-codex-multiagent': 'PstackMultiAgent', 'cstack-controlled-recovery': 'ControlledRecoveryCstack',
@@ -56,6 +59,22 @@ def command(argv: list[str], *, timeout=120, auth=False, cwd=ROOT) -> str:
     if result.returncode:
         raise RuntimeError(f'{argv[0]} failed ({result.returncode}): {result.stderr[-2000:]}\n{result.stdout[-2000:]}')
     return result.stdout.strip()
+
+
+def grader_dockerfile(build_base: str, python_bin: str) -> str:
+    wheel = '/tmp/' + UV_WHEEL
+    return (
+        f'FROM {build_base}\nUSER root\nCOPY tests /tests\nCOPY build-requirements.txt /build-requirements.txt\n'
+        'COPY grader_offline /opt/benchmark-grader\n'
+        f'RUN curl -fsSL {UV_WHEEL_URL} -o {wheel} && '
+        f'echo "{UV_WHEEL_SHA256}  {wheel}" | sha256sum -c - && '
+        f'{python_bin} -m pip install --no-index --no-deps {wheel} && rm -f {wheel}\n'
+        f'RUN {python_bin} -m pip download --dest /opt/benchmark-wheels -r /build-requirements.txt\n'
+        'RUN chmod +x /tests/test.sh && mkdir -p /logs/verifier\n'
+        'ENV PYTHONPATH=/opt/benchmark-grader BENCHMARK_HTTP_CACHE_MODE=record\n'
+        'RUN bash /tests/upstream-test.sh; test "$(cat /logs/verifier/reward.txt)" = 0 && test -s /logs/verifier/report.json\n'
+        'ENV UV_OFFLINE=1 PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/benchmark-wheels UV_PYTHON_DOWNLOADS=never BENCHMARK_HTTP_CACHE_MODE=replay\n'
+        'RUN rm -f /logs/verifier/reward.txt /logs/verifier/report.json\n')
 
 
 def doctor() -> dict:
@@ -245,18 +264,9 @@ def prepare(work: Path, model: str, codex_version: str, spec: dict | None = None
         'python3 /tests/restore.py\ncd /testbed\n'
         'git config core.hooksPath /dev/null\n'
         'exec bash /tests/upstream-test.sh\n')
-    (grader / 'Dockerfile').write_text(
-        f'FROM {build_base}\nUSER root\nCOPY tests /tests\nCOPY build-requirements.txt /build-requirements.txt\n'
-        'COPY grader_offline /opt/benchmark-grader\n'
-        # Match the upstream task's pinned uv provisioning. Warm its parser and
-        # editable-install dependencies before the verifier loses network access.
-        'RUN curl -LsSf https://astral.sh/uv/0.7.13/install.sh | sh\n'
-        f'RUN {python_bin} -m pip download --dest /opt/benchmark-wheels -r /build-requirements.txt\n'
-        'RUN chmod +x /tests/test.sh && mkdir -p /logs/verifier\n'
-        'ENV PYTHONPATH=/opt/benchmark-grader BENCHMARK_HTTP_CACHE_MODE=record\n'
-        'RUN bash /tests/upstream-test.sh; test "$(cat /logs/verifier/reward.txt)" = 0 && test -s /logs/verifier/report.json\n'
-        'ENV UV_OFFLINE=1 PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/benchmark-wheels UV_PYTHON_DOWNLOADS=never BENCHMARK_HTTP_CACHE_MODE=replay\n'
-        'RUN rm -f /logs/verifier/reward.txt /logs/verifier/report.json\n')
+    # Install the reviewed uv wheel only after verifying its repository-pinned
+    # digest, then warm the remaining dependencies before network is disabled.
+    (grader / 'Dockerfile').write_text(grader_dockerfile(build_base, python_bin))
     grader_tag = 'cstack-bench-grader:' + original_digest[:12]
     command(['docker', 'build', '--platform', 'linux/amd64', '-t', grader_tag, str(grader)], timeout=900)
     grader_image = image_id(grader_tag)

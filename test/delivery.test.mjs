@@ -12,3 +12,8 @@ test('DELIVERY-09 DELIVERY-10 DELIVERY-11 DELIVERY-12: interrupted delivery pres
  await writeFile(join(f.repo,'calc.mjs'),'export const add=(a,b)=>a+b;\n');assert.equal((await recoverDelivery(f.run.id,delivery,{home:f.home})).status,'APPLIED');assert.equal((await recoverDelivery(f.run.id,delivery,{home:f.home})).status,'APPLIED');
 });
 test('DELIVERY-07: corrupted stored patch is not used for recovery',async t=>{const f=await repaired(t);let dir,delivery;await assert.rejects(applyRun(f.run.id,{repo:f.repo,snapshot:f.run.snapshot.source_digest,home:f.home,afterPrepared:async x=>{dir=x.directory;delivery=x.journal.id;throw Error('stop before apply');}}));await writeFile(join(dir,'candidate.patch'),'tampered');await assert.rejects(recoverDelivery(f.run.id,delivery,{home:f.home}),{code:'PATCH_INTEGRITY'});assert.equal(await readFile(join(f.repo,'calc.mjs'),'utf8'),'export const add=(a,b)=>a-b;\n');});
+test('DELIVERY-13: mixed recovery state is preserved for deliberate manual repair',async t=>{
+ const f=await repaired(t,async path=>writeFile(join(path,'new.txt'),'candidate')),opts={repo:f.repo,snapshot:f.run.snapshot.source_digest,home:f.home};let delivery;
+ await assert.rejects(applyRun(f.run.id,{...opts,afterApply:async({journal})=>{delivery=journal.id;await writeFile(join(f.repo,'calc.mjs'),'export const add=(a,b)=>a-b;\n');throw Error('simulated partial apply');}}),/simulated partial apply/);
+ const recovery=await recoverDelivery(f.run.id,delivery,{home:f.home});assert.equal(recovery.status,'RECOVERY_REQUIRED');assert.deepEqual(recovery.conflicts,['new.txt']);assert.equal(await readFile(join(f.repo,'new.txt'),'utf8'),'candidate');
+});
