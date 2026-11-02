@@ -17,3 +17,6 @@ dist/
 
 # Local operator notes and continuation scripts; publish reviewed reports instead.
 .audit/
+
+# Local image-generation drafts; selected public artwork lives in docs/assets.
+output/imagegen/

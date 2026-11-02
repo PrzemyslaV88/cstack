@@ -1,12 +1,12 @@
 # cStack for Codex
 
-cStack 0.4.0 is packaged as a local Codex plugin. It includes the controller runtime
+cStack 0.5.0 is packaged as a local Codex plugin. It includes the controller runtime
 and four skills. Repairs use the existing ChatGPT Codex sign-in, Git and Docker;
 there is no separate service or automatic API-key billing fallback.
 
 ## Use it
 
-Open a new Codex chat in a clean Git project and invoke:
+Open a new Codex chat in your Git project and invoke:
 
 ```text
 $cstack:cstack Fix this bug and independently check that the fix works.
@@ -34,13 +34,13 @@ configuration stay protected. A current verified candidate can be exported;
 export is a handoff and does not merge into the original repository. Pending human
 review stays explicit. The skill never invents a human approval.
 
-The initial Git revision must be clean. The plugin does not stash, commit, clean
-or delete existing work to satisfy that condition. Node 22.13+, an authenticated
+Clean source is the default. Explicit `plan --source-mode working-copy` captures
+existing edits and preserves staging; see [working-copy support](REVIEW_AND_DELIVERY.md#start-with-existing-edits-in-05). Node 22.13+, an authenticated
 Codex CLI and a functioning Docker engine with the selected runtime image are
 required. Installation does not automatically install dependencies or images.
 
-On this Mac the available verification context is `colima-cstack`. When needed,
-set `DOCKER_CONTEXT=colima-cstack` for cStack commands; this does not change the
+Select your available Docker engine. If you use a named context, set
+`DOCKER_CONTEXT=YOUR_CONTEXT` for cStack commands; this does not change the
 global Docker context. The plugin's doctor command checks the chosen setup.
 
 ## Build and install
@@ -64,7 +64,7 @@ The installed ID is `cstack@cstack-local`. Other plugins are preserved. Existing
 generated bundles are reused only if their contents match; altered or unexpected
 files are preserved and the build stops instead of overwriting them.
 
-The registered local marketplace lives in the T7 checkout. Keep that source
+The registered local marketplace lives under `dist/cstack-marketplace` in your checkout. Keep that source
 available for marketplace refreshes and rebuilding. The installed cache contains
 its own controller runtime, so its command does not import the source checkout.
 When preparing a later installed release, update the package and both plugin

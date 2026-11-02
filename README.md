@@ -212,4 +212,7 @@ Tests cover false completion, isolation, changed evidence, crash/retry/resume be
 | [Design history](docs/ARCHITECTURE.md) | Original architecture proposal and roadmap; not a list of shipped guarantees. |
 | [Upgrade implementation plan](docs/UPGRADE_IMPLEMENTATION_PLAN.md) | Detailed 0.4/0.5 design, implementation backlog, acceptance tests and release gates; see validation records for measured scope. |
 
+Contributions are welcome: [local development and bug reports](CONTRIBUTING.md).
+For vulnerabilities, use [private security reporting](SECURITY.md).
+
 Licensed under [MIT](LICENSE).
