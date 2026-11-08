@@ -49,7 +49,7 @@ export async function planEnvironment(profile,{repo,recipe=profile.environment.m
   const source=await add(selected,'requirements.lock');const lines=source.replace(/\\\r?\n/g,' ').split(/\r?\n/).map(l=>l.replace(/\s+#.*$/,'').trim()).filter(l=>l&&!l.startsWith('#'));
   requireThat(lines.length>0&&lines.every(l=>/^[A-Za-z0-9][\w.-]*(?:\[[\w,.-]+\])?==[A-Za-z0-9.+_-]+(?:\s+--hash=sha256:[a-f0-9]{64})+$/.test(l)),'Only exact hashed binary-wheel requirements are supported','ENVIRONMENT_MANUAL_REQUIRED');
  }
- const baseTag=base.reference||'cstack-base:'+base.id.slice(7);
+ const baseTag='cstack-base:'+base.id.slice(7);
  const dockerfile=recipeDockerfile(recipe,baseTag);
  const install_argv=recipe==='npm-lock'?['npm','ci','--ignore-scripts','--no-audit','--no-fund']:recipe==='pip-hashes'?['python','-m','pip','install','--require-hashes','--only-binary=:all:','-r','/opt/cstack-requirements.lock']:[];
  const environment_key=digestOf({template_version:1,platform:base.platform,base_image_id:base.id,inputs:inputs.map(({content,...x})=>x),install_argv});
