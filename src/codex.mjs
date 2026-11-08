@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { classifyUsage } from './usage.mjs';
+import { fileURLToPath } from 'node:url';
 const limits = new Set(['rate_limit_exceeded', 'usage_limit_reached', 'insufficient_quota', 'credits_exhausted']);
 export function parseCodexEvents(lines) {
-  let thread = null, complete = false, failed = false, quota = false, malformed = false;
+  let thread = null, complete = false, failed = false, quota = false, malformed = false, worker_notes, compacted = false;
   const usage = [], errors = [];
   let terminals = 0;
   for (const line of lines) {
@@ -15,6 +16,9 @@ export function parseCodexEvents(lines) {
     let e; try { e = JSON.parse(line); } catch { malformed = true; continue; }
     if (e.type === 'thread.started' && safeId(e.thread_id)) thread = e.thread_id;
     if (e.type === 'turn.completed') { terminals++; complete = true; if (e.usage) usage.push(e.usage); }
+    if (e.type === 'item.completed' && e.item?.type === 'agent_message') worker_notes =
+      typeof e.item.text === 'string' && Buffer.byteLength(e.item.text) <= 8192 ? e.item.text : '';
+    if (e.type === 'thread.compacted' || e.type === 'item.completed' && e.item?.type === 'context_compaction') compacted = true;
     if (e.type === 'turn.failed' || e.type === 'error') {
       failed = true;
       const error = e.error || e;
@@ -23,7 +27,7 @@ export function parseCodexEvents(lines) {
     }
   }
   const accounting = classifyUsage(usage);
-  return { thread_id: thread, usage, complete, quota, accounting_source: 'native',
+  return { thread_id: thread, usage, complete, quota, worker_notes, compacted, accounting_source: 'native',
     usage_status: terminals > 1 ? 'invalid' : accounting.status,
     usage_diagnostic: terminals > 1 ? 'Duplicate completed-turn event' : accounting.diagnostic,
     protocol_error: malformed || terminals !== 1 || failed, diagnostic: errors.join('; ') };
@@ -41,6 +45,7 @@ export function codexArgs(run) {
   const override = Object.entries(settings).flatMap(([k, v]) => ['-c', k + '=' + (typeof v === 'object' ? '{ PATH = ' + JSON.stringify(v.PATH) + ' }' : JSON.stringify(v))]);
   if (run.contract.model) override.push('-c', 'model=' + JSON.stringify(run.contract.model));
   return ['--no-daemon', ...override, 'exec', '--ignore-user-config', '--ignore-rules', '--json', '--sandbox', 'workspace-write', '--cd', run.worktree,
+    ...(run.workflow ? ['--output-schema', fileURLToPath(new URL('./worker-notes.schema.json', import.meta.url))] : []),
     ...(run.thread_id ? ['resume', run.thread_id] : []), '-'];
 }
 function workerEnv(extra = {}) {

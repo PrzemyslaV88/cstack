@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="package.json"><img alt="Version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-52edc5?style=flat-square&amp;labelColor=142138"></a>
+  <a href="package.json"><img alt="Version 0.6.0" src="https://img.shields.io/badge/version-0.6.0-52edc5?style=flat-square&amp;labelColor=142138"></a>
   <a href="docs/VALIDATION.md"><img alt="Validation evidence" src="https://img.shields.io/badge/validation-evidence_linked-52edc5?style=flat-square&amp;labelColor=142138"></a>
   <a href="#requirements"><img alt="Node.js 22.13 or newer" src="https://img.shields.io/badge/Node.js-22.13%2B-6c8fff?style=flat-square&amp;labelColor=142138"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-a5b6cf?style=flat-square&amp;labelColor=142138"></a>
@@ -34,6 +34,35 @@ cStack helps you understand an unfamiliar project, make a focused fix, and inspe
 - **Deliver carefully:** preview a binary-capable patch, apply without changing staging, and recover interrupted delivery without overwriting a concurrent edit.
 
 [Set up a project](docs/SETUP.md) · [Review and delivery](docs/REVIEW_AND_DELIVERY.md) · [Change impact](docs/IMPACT.md)
+
+## Multiphase work and fresh context in 0.6
+
+Prepare rough requests as a local outcome brief, then compile real expectations and
+dependency tasks into acceptance. The controller freezes the workflow policy with
+the plan. New runs refresh sessions at task boundaries, preserve the same worktree
+and consumed budgets, and save durable recovery checkpoints. Short corrections can
+continue in the same session. Bounded worker handoffs are advisory; independent
+checks and human review still determine completion.
+
+```sh
+node src/cli.mjs intake "Fix the observable behavior" --repo /project --out /private/new-intake
+# Complete brief.json using requirements and the actual public interface:
+node src/cli.mjs intake compile --brief /private/new-intake/brief.json --repo /project --out /private/new-acceptance
+# Use the resulting acceptance.json with the existing setup / plan / run workflow.
+node src/cli.mjs checkpoint RUN_ID
+node src/cli.mjs review RUN_ID --out /private/new-review
+node src/cli.mjs retro RUN_ID --out /private/new-retrospective
+node src/cli.mjs architecture --repo /project --out /private/new-architecture-report
+```
+
+Review exports include before/after evidence, requirements coverage, advisory
+standards signals, session/reset reasons and a local `pr.md`. Selected glossary
+and decision documents contribute focused context. Context occupancy remains
+unknown; byte and session limits are explicit policy, not model capacity estimates.
+These features have functional tests; the historical benchmark below does not
+measure their effect on model quality, speed or token consumption.
+
+[Workflow guide](docs/WORKFLOWS.md) · [Local 0.6 validation receipt](docs/validation/workflow-0.6.0.json) · [Adaptation provenance](THIRD_PARTY_NOTICES.md)
 
 ## Less overhead. The same five bugs fixed.
 

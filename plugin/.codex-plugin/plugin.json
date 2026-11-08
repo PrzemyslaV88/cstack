@@ -1,6 +1,6 @@
 {
   "name": "cstack",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Map dependencies, analyze project stacks, and run coding jobs with the cStack controller.",
   "author": {
     "name": "cStack"

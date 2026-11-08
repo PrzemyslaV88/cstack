@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cstack outcome brief v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 4096
+    },
+    "type": {
+      "enum": [
+        "FIX",
+        "FEATURE",
+        "REFACTOR",
+        "INVESTIGATE"
+      ]
+    },
+    "non_goals": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string"
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string"
+      }
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string"
+      }
+    },
+    "outcomes": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {
+            "$ref": "contract-v3.schema.json#/properties/criteria/items"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "seam": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "criterion",
+          "source",
+          "seam"
+        ]
+      }
+    },
+    "tasks": {
+      "$ref": "contract-v3.schema.json#/properties/tasks"
+    },
+    "integration_criteria": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "string"
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {},
+        "reasoning": {},
+        "attempt_limit": {},
+        "budget": {},
+        "policy": {},
+        "implementation_paths": {}
+      }
+    },
+    "context": {
+      "$ref": "contract-v3.schema.json#/properties/context"
+    },
+    "workflow": {
+      "$ref": "workflow-policy.schema.json"
+    }
+  },
+  "required": [
+    "schema_version",
+    "goal",
+    "type",
+    "non_goals",
+    "assumptions",
+    "decisions",
+    "questions",
+    "outcomes",
+    "tasks",
+    "integration_criteria",
+    "execution",
+    "context"
+  ]
+}

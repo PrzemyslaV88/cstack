@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "diagnosis": { "type": "string" },
+    "next_action": { "type": "string" },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "decisions": { "type": "array", "items": { "type": "string" } },
+    "rejected_hypotheses": { "type": "array", "items": { "type": "string" } },
+    "files": { "type": "array", "items": { "type": "string" } },
+    "checks_run": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["diagnosis", "next_action", "blockers", "decisions", "rejected_hypotheses", "files", "checks_run"]
+}

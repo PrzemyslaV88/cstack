@@ -3,6 +3,13 @@ import {fixture} from './helpers/fixture.mjs';import {repository} from '../src/r
 const id='sha256:'+'a'.repeat(64),calls=[];const inspect=async args=>{calls.push(args);assert.deepEqual(args.slice(0,3),['docker','image','inspect']);return {code:0,stdout:JSON.stringify([{Id:id,Os:'linux',Architecture:'arm64',RepoDigests:[]}])};};
 async function setup(t,extra={}){const f=await fixture(t,{'package.json':JSON.stringify({scripts:{test:'node --test'},dependencies:{}}),'package-lock.json':JSON.stringify({lockfileVersion:3,packages:{'':{}}}),'private-canary.txt':'do not copy',...extra});return {...f,profile:await discoverProfile(await repository(f.repo),{image:'node:22.16.0-bookworm-slim'})};}
 test('ENV-01 ENV-03: existing local image readiness is independently probed offline',async t=>{const f=await setup(t);const ready=await checkEnvironment(f.profile,{cwd:f.repo});assert.equal(ready.environment_ready,true);assert.equal(ready.versions.adapter,'node-test');});
+test('a locally available base stays local even when Docker records a registry digest',async t=>{
+ const f=await setup(t);
+ const control=async()=>({code:0,stdout:JSON.stringify([{Id:id,Os:'linux',Architecture:'arm64',RepoDigests:['node@'+id]}])});
+ const result=await planEnvironment(f.profile,{repo:f.repo,recipe:'npm-lock',baseImage:'node:22.16.0-bookworm-slim',control});
+ assert.equal(result.plan.base_reference,'cstack-base:'+id.slice(7));
+ assert.ok(result.dockerfile.startsWith('FROM cstack-base:'+id.slice(7)+'\n'));
+});
 test('ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build',async t=>{
  const f=await setup(t),opts={repo:f.repo,recipe:'npm-lock',baseImage:'node:22.16.0-bookworm-slim',control:inspect};const a=await planEnvironment(f.profile,opts),b=await planEnvironment(f.profile,opts);assert.equal(digestOf(a.plan),digestOf(b.plan));assert.equal(a.inputs.length,2);
  const exported=await exportEnvironmentPlan(a,join(f.root,'plan with spaces'));assert.deepEqual((await readdir(join(exported.directory,'context'))).sort(),['Dockerfile','package-lock.json','package.json']);assert.ok((await readFile(join(exported.directory,'context','Dockerfile'),'utf8')).includes('--ignore-scripts'));assert.ok(calls.every(x=>x[1]==='image'));

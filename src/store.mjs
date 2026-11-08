@@ -4,7 +4,8 @@ import { writeFile, rename, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hostname } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { CstackError, requireThat, hash, json, dataHome, safeId } from './util.mjs';
+import { CstackError, requireThat, hash, json, dataHome, safeId, digestOf } from './util.mjs';
+import { validateWorkflow } from './workflow.mjs';
 
 // v1 DB is deliberately left untouched. Its evidence lacked required provenance.
 export function openStore(home = dataHome()) {
@@ -35,6 +36,8 @@ export async function loadRun(id, home = dataHome()) {
     const run = JSON.parse(row.state);
     requireThat(hash(row.contract) === row.contract_hash && hash(json(run.contract)) === row.contract_hash, 'Frozen contract integrity failure', 'INTEGRITY');
     requireThat(run.revision === row.revision, 'Run revision mismatch', 'INTEGRITY');
+    validateWorkflow(run);
+    if (run.preparation) requireThat(digestOf(run.preparation)===run.preparation_digest,'Preparation changed','INTEGRITY');
     return run;
   } finally { db.close(); }
 }
@@ -43,9 +46,13 @@ export function commitRun(run, kind, payload = {}, home = dataHome(), token) {
   const before = { revision: run.revision, event_seq: run.event_seq };
   try {
     db.exec('BEGIN IMMEDIATE');
-    const row = db.prepare('SELECT revision,contract_hash FROM runs WHERE id=?').get(run.id);
+    const row = db.prepare('SELECT revision,contract_hash,state FROM runs WHERE id=?').get(run.id);
     requireThat(row && row.revision === run.revision, 'Concurrent/stale run revision; reload before writing', 'CONFLICT');
     requireThat(hash(json(run.contract)) === row.contract_hash, 'Frozen contract changed', 'INTEGRITY');
+    const previous=JSON.parse(row.state);
+    requireThat(previous.workflow_digest===run.workflow_digest && previous.preparation_digest===run.preparation_digest,'Frozen workflow/preparation changed','INTEGRITY');
+    validateWorkflow(run);
+    if(run.preparation)requireThat(digestOf(run.preparation)===run.preparation_digest,'Frozen preparation changed','INTEGRITY');
     if (token) requireThat(db.prepare('SELECT token FROM locks WHERE run_id=?').get(run.id)?.token === token, 'Lost run lock', 'CONFLICT');
     run.revision++;
     run.event_seq = Number(db.prepare('SELECT COALESCE(MAX(seq),0)+1 AS seq FROM events WHERE run_id=?').get(run.id).seq);
