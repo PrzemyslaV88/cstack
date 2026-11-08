@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { buildPlugin } from './build-plugin.mjs';
 
 function codex(args) {
@@ -9,7 +9,18 @@ function codex(args) {
   return JSON.parse(result.stdout);
 }
 try {
-  const build = await buildPlugin();
+  const registrations = codex(['plugin', 'marketplace', 'list', '--json']);
+  const existing = registrations.marketplaces?.find(m => m.name === 'cstack-local');
+  let output;
+  if (existing) {
+    if (existing.marketplaceSource?.sourceType !== 'local') throw new Error('The existing cstack-local marketplace is not local; preserve its source and choose a local installation explicitly.');
+    output = resolve(existing.root);
+    const catalog = JSON.parse(await readFile(join(output, '.agents/plugins/marketplace.json'), 'utf8'));
+    if (catalog.name !== 'cstack-local' || catalog.plugins?.length !== 1 || catalog.plugins[0].name !== 'cstack') {
+      throw new Error('Existing cstack-local registration contains unrelated plugins; preserving it.');
+    }
+  }
+  const build = await buildPlugin(output ? { output } : {});
   const marketplace = codex(['plugin', 'marketplace', 'add', build.marketplaceRoot, '--json']);
   const installed = codex(['plugin', 'add', 'cstack@cstack-local', '--json']);
   const listing = codex(['plugin', 'list', '--marketplace', 'cstack-local', '--json']);

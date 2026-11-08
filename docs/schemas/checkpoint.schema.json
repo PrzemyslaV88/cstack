@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cstack controller checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "phase": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "workflow_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "preparation_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "candidate": {
+      "type": "string"
+    },
+    "environment": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "event_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tasks": {
+      "type": "object"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spent_ms": {
+      "type": "number",
+      "minimum": 0
+    },
+    "accounting": {
+      "type": "object"
+    },
+    "evidence": {
+      "type": "object"
+    },
+    "session": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": "array",
+      "maxItems": 100
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "reason",
+    "phase",
+    "contract_digest",
+    "workflow_digest",
+    "preparation_digest",
+    "candidate",
+    "environment",
+    "event_seq",
+    "tasks",
+    "attempts",
+    "spent_ms",
+    "accounting",
+    "evidence",
+    "session",
+    "notes"
+  ]
+}

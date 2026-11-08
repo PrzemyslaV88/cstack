@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "version": "0.6.0",
+  "status": "FUNCTIONAL_CHECKS_PASSED",
+  "checked_at": "2026-11-08T01:35:44.770Z",
+  "source_fingerprint": "0b2c3baa9e69842152fa14f47db6a6a364c11e179d3134739a7a78639f8e0d1c",
+  "workflow_runtime_digest": "5031361d2b38239848fa07f0988270945b218fed42ee8d36adbcf1b57ad254ca",
+  "guidance_digest": "b26bdc8dfc9c55d10c77f1fb162483c0b5a4a6bb79f60865ebd0e3d5e75f262f",
+  "source_state": "Local uncommitted implementation; not published or deployed.",
+  "node_checks": [
+    {
+      "log": ".audit/workflow-implementation/core-tests.txt",
+      "tests": 186,
+      "passed": 186,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "3cf70547e53b172044665e3e7376f2e22d9d04f888e72e964036e76352225d86"
+    },
+    {
+      "log": ".audit/workflow-implementation/workflow-cli-tests.txt",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "aa72322fe169b7f42b81d4987abc6dd60bfd6ef4e70801bc99e495d124264f68"
+    },
+    {
+      "log": ".audit/workflow-implementation/installer-tests.txt",
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "a2687f6bcd5756e426ad854e313aa6d79d4bd8b301e4fbc8e6217905ceebce96"
+    },
+    {
+      "log": ".audit/workflow-implementation/final-workflow-tests.txt",
+      "tests": 35,
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "ee586917c4153bd00343bca80a089a61b91b4aaa6401f46e2339478bbb221a82"
+    }
+  ],
+  "unique_node_test_names": 192,
+  "syntax_modules": 96,
+  "benchmark_regressions": {
+    "tests": 90,
+    "passed": 86,
+    "skipped": 4,
+    "skip_reason": "Pinned Harbor dependency is not installed",
+    "sha256": "b7b979dd07c79067795d3314d22034e9f52079ca182d275a3ea5e99187e2688e"
+  },
+  "offline_grader": {
+    "tests": 4,
+    "passed": 4,
+    "sha256": "db31b96f4d30c6a270ec8c182d1a2e06da7969b9a7f9170a158c3f9da4182234"
+  },
+  "doctor": {
+    "controller_ready": true,
+    "worker_ready": true,
+    "verifier_ready": true,
+    "project_verifier_ready": "not_checked"
+  },
+  "plugin": {
+    "version": "0.6.0",
+    "source_digest": "033d75c5b567f71ee7df518562fc96b8b32c69f73f80470e1bfbed76d58c34c2",
+    "enabled": true,
+    "existing_marketplace_preserved": true
+  },
+  "limits": [
+    "Workers in functional journeys were scripted; no live model-performance or token-saving benchmark was run.",
+    "Context occupancy is unknown.",
+    "Preparation/semantic-review model usage is not measured by worker accounting.",
+    "No parent multi-run scheduler, app-server transport or native Apple-platform adapter was needed for this single-run implementation."
+  ]
+}

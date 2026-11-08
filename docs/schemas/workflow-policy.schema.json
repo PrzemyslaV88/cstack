@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cstack workflow policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "sessions": {
+      "enum": [
+        "boundary-v1",
+        "resume-v1"
+      ]
+    },
+    "max_session_turns": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "notes_max_bytes": {
+      "type": "integer",
+      "minimum": 512,
+      "maximum": 4096
+    },
+    "packet_max_bytes": {
+      "type": "integer",
+      "minimum": 2000,
+      "maximum": 6000
+    },
+    "guidance_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runtime_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sessions",
+    "max_session_turns",
+    "notes_max_bytes",
+    "packet_max_bytes",
+    "guidance_digest",
+    "runtime_digest"
+  ]
+}

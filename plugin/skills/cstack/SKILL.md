@@ -8,6 +8,13 @@ controller as `CSTACK`. Read [references/contracts.md](references/contracts.md) 
 writing acceptance criteria. The controller's frozen contract, snapshots and
 current evidence determine completion.
 
+For rough requests or larger work, use [request preparation](references/intake.md)
+to produce concrete acceptance without inventing expectations. Follow the
+[phase and recovery workflow](references/workflow.md). Optional explicit
+[architecture investigations and retrospectives](references/investigations.md)
+remain read-only. These references supplement the controller; they cannot award
+completion or replace its review gates.
+
 For a new repair:
 
 1. Use the user's requested project and observable outcome. Run `setup --repo`

@@ -12,12 +12,19 @@ import { graphMarkdown, stackMarkdown, exportAnalysis, readTraceFile } from './a
 import {upgradeFlags,upgradeCommand} from './cli-upgrade.mjs';
 import {renderResult,errorResult} from './cli-output.mjs';
 import { dataHome } from './util.mjs';
+import {workflowFlags,workflowCommand} from './cli-workflow.mjs';
 const version=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
 const help = `cStack ${version} — single-worker repairs and read-only project analysis
 
 cstack map --repo /project [--focus relative/file.py] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack analyze-stack --repo /project [--trace /error.log] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack setup --repo PATH [--image IMAGE] [--scope DIR] [--adapter pytest|vitest|node-test]
+cstack intake "Observable goal" --repo PATH --out DIR
+cstack intake compile --brief FILE --repo PATH --out DIR
+cstack checkpoint RUN_ID [--out DIR] [--format json|markdown]
+cstack checkpoint recover RUN_ID --snapshot SHA256
+cstack retro RUN_ID [RUN_ID ...] [--out DIR]
+cstack architecture --repo PATH [--focus FILE] [--out DIR]
 cstack profile show|validate --repo PATH [--profile FILE]
 cstack env plan --repo PATH --profile FILE --out DIR [--recipe npm-lock|pip-hashes] [--base-image IMAGE]
 cstack env prepare --plan FILE --expect-plan SHA256
@@ -45,7 +52,7 @@ Defaults: Docker verification, no network, no host fallback, ChatGPT Codex auth 
 Linux namespaces are an explicitly selected alternative. Native Windows: use WSL2.
 Contracts are frozen. Resume never increases budgets. No automatic push/deployment.
 `;
-const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['runner','image','profile','repo'], init:['out','runner'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags};
+const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['runner','image','profile','repo'], init:['out','runner'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags,...workflowFlags};
 function options(args, op) {
   const flags = {}, rest = [];
   const known = new Set(['help', ...(commandFlags[op] || [])]);
@@ -62,6 +69,7 @@ async function main() {
   const [op, ...args] = process.argv.slice(2), { flags, rest } = options(args, op);
   if (!op || flags.help || op === 'help' || op === '--help') { console.log(help); return; }
   requireThat(Object.hasOwn(commandFlags,op),'Unknown command: '+op);
+  if(await workflowCommand(op,flags,rest))return;
   if(await upgradeCommand(op,flags,rest))return;
   if (op === 'map' || op === 'analyze-stack') {
     requireThat(!rest.length, 'Use --repo to select the project');

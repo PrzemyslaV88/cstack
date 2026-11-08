@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile, realpath, cp, access, rm } from 'node:fs/pr
 import { resolve, join, relative } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { userInfo } from 'node:os';
-import { CstackError, dataHome, requireThat, hash, json, matches, redact } from './util.mjs';
+import { CstackError, dataHome, requireThat, hash, json, matches, redact, digestOf } from './util.mjs';
 import { normalizeContract } from './contracts.mjs';
 import { createRecord, loadRun, commitRun, lockRun, unlockRun, exportState, openStore } from './store.mjs';
 import { inspectRepo, createWorktree, sealCandidate, fingerprint, manifest, manifestChanges, changedPaths, git, captureOrigin, overlayOrigin } from './snapshot.mjs';
@@ -15,6 +15,9 @@ import {measurePhase} from './journey.mjs';
 import {buildContext,utf8Lines} from './context.mjs';
 import {immutableJson} from './artifacts.mjs';
 import { classifyUsage, accountingForRun } from './usage.mjs';
+import { workflowPolicy, validateWorkflow, selectSession, taskPhase, workerGuidance, normalizeWorkerNotes, workflowSummary } from './workflow.mjs';
+import { saveCheckpoint, loadCheckpoint, contextPacket } from './checkpoint.mjs';
+import { normalizePreparation } from './intake.mjs';
 export { CstackError, dataHome, normalizeContract, loadRun, openStore, fingerprint, changedPaths, codexWorker, codeMap };
 export { command } from './process.mjs';
 const SUCCESS = new Set(['VERIFIED', 'INVESTIGATED']);
@@ -23,7 +26,7 @@ export const isTerminal = s => SUCCESS.has(s) || s === 'ALREADY_SATISFIED';
 export const runtimePaths = paths => paths.filter(p => !testPath(p) && !/(^|\/)(docs?|\.github)(\/|$)|(^|\/)README[^/]*$/.test(p));
 export const tampering = paths => paths.filter(p => testPath(p) || configPath(p));
 
-export async function beginRun({ repo, contract, home = dataHome() }) {
+export async function beginRun({ repo, contract, home = dataHome(), workflow = workflowPolicy(), preparation = null }) {
   requireThat(process.platform !== 'win32', 'Use WSL2 for Windows; native Windows execution is not supported', 'CAPABILITY');
   const request_recorded_at=new Date().toISOString();home = resolve(home);
   const c = normalizeContract(contract), info = await inspectRepo(repo, c), id = randomUUID();
@@ -51,6 +54,11 @@ export async function beginRun({ repo, contract, home = dataHome() }) {
   const run = { id, request_recorded_at, run_state_version: 3, status: 'CREATED', repo: info.root, base: info.base, origin, worktree, contract: c,
     attempts: [], results: {}, baseline: {}, tasks: {}, approvals: [], usage: [], spent_ms: 0, active: false,
     changed_paths: [], thread_id: null, created: new Date().toISOString() };
+  if (workflow) {
+    run.workflow = workflowPolicy(workflow); run.workflow_digest = digestOf(run.workflow);
+    run.run_state_version = 4; run.phase = 'preparation';
+    if (preparation) { run.preparation = normalizePreparation(preparation,c.criteria,c.tasks); run.preparation_digest=digestOf(run.preparation); }
+  }
   run.initial_snapshot = await sealCandidate(run, home);
   if(c.schema_version===3){const known=new Set(run.initial_snapshot.entries.filter(e=>e.type==='file').map(e=>e.path));requireThat([...c.context.files,...c.context.frames.map(f=>f.path)].every(p=>known.has(p)),'Context hints must name known included source files');}
   // Project configuration can reintroduce tools or hooks despite user-config isolation.
@@ -125,25 +133,28 @@ export function promptFor(run, task, context) {
     requireThat(Buffer.byteLength(mandatory)<=8000,'Mandatory prompt exceeds reserved budget');
     const feedback=utf8Lines(failurePacket(run),5800);
     const meta=utf8Lines(`Context policy: ${context.policy}; partial coverage: ${context.coverage?.partial||false}; omitted explicit: ${context.omitted_explicit?.length||0}\nSelected: ${context.files.join(', ')}\nPrevious attempt: ${previous.at(-1)?.reason||'none'}\nUnchanged excerpts in this thread are omitted. Full context is sent to a new thread.\nReport diagnosis and blockers; prose is not a completion signal.`,1800);
-    const prompt=[mandatory,feedback,context.text,meta].join('\n\n');requireThat(Buffer.byteLength(prompt)<=32000,'Prompt byte limit exceeded');return prompt;
+    const prompt=[mandatory,workerGuidance(run,task),run.context_packet||'',feedback,context.text,meta].filter(Boolean).join('\n\n');requireThat(Buffer.byteLength(prompt)<=32000,'Prompt byte limit exceeded');return prompt;
   }
   const resuming = Boolean(run.thread_id && previous.length);
-  return [run.contract.type === 'INVESTIGATE' ? 'Deliver the requested investigation.' : 'Deliver the requested behavior, not an audit or a plan.',
+  const prompt = [run.contract.type === 'INVESTIGATE' ? 'Deliver the requested investigation.' : 'Deliver the requested behavior, not an audit or a plan.',
     'One coding worker. No subagents. No push, deployment, credential access, controller access or test weakening.',
     'Do not commit, change Git HEAD, edit Codex configuration, or perform unrelated refactoring.',
     resuming ? 'Continue the same frozen objective in this existing conversation. Correct the observed failure below.' : `Objective: ${run.contract.goal}`,
     `Task ${task.id}: ${resuming ? task.title.slice(0, 240) : task.title}`,
+    workerGuidance(run,task), run.context_packet || '',
     ...run.contract.criteria.filter(c => task.criteria.includes(c.id)).map(c => `${c.id}: ${c.text}`),
     `Implementation artifacts: ${run.contract.implementation_paths.join(', ') || 'behavior-changing source/configuration; not documentation or tests alone'}`,
     failurePacket(run),
     `Focused files: ${context.files.join(', ')}`, `Import neighbours: ${JSON.stringify(context.edges)}`,
     previous.length ? `Last attempt: ${previous.at(-1).number}: ${previous.at(-1).reason || previous.at(-1).status}. Revise your diagnosis; do not repeat a failed patch.` : '',
-    'Report your changed diagnosis and remaining blockers. Your prose is not a completion signal.'].filter(Boolean).join('\n\n').slice(0, 22_000);
+    'Report your changed diagnosis and remaining blockers. Your prose is not a completion signal.'].filter(Boolean).join('\n\n');
+  if(run.workflow)requireThat(Buffer.byteLength(prompt)<=32000,'Required prompt exceeds byte limit; split the task','CONTEXT_BUDGET');
+  return run.workflow?prompt:prompt.slice(0,22_000);
 }
 
 export async function processRun(input, { home = dataHome(), worker = codexWorker, signal, afterAttempt, onEvent } = {}) {
   const token = lockRun(input.id, home);
-  let run, lastCharge = Date.now();
+  let run, lastCharge = Date.now(), recovered = false, checkpointTrusted = false;
   function persist(kind, payload = {}) {
     const now = Date.now(); run.spent_ms += now - lastCharge; lastCharge = now;
     commitRun(run, kind, payload, home, token);
@@ -161,6 +172,7 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
     finally{run.metrics[phase]=(run.metrics[phase]||0)+run.journey[index].duration_ms;}
   }
   async function examine(runner,focused=false) {
+    if (run.workflow) run.phase = 'verification';
     run.status = 'VERIFYING'; run.snapshot = await sealCandidate(run, home);
     run.changed_paths = manifestChanges(run.initial_snapshot.entries, run.snapshot.entries);
     run.results = await measure('verification_ms', () => verify(run, run.snapshot, runner, { home, signal, deadline: Date.now() + Math.max(0, remaining()), focused }));
@@ -168,8 +180,11 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
   }
   try {
     run = await loadRun(input.id, home);
+    validateWorkflow(run);
+    await loadCheckpoint(run, home); checkpointTrusted = true;
     run.metrics ||= {};
     if (run.active) {
+      recovered = true;
       // An interrupted reservation is consumed even when no usage event arrived.
       const interrupted = run.attempts.filter(a => ['RESERVED', 'RUNNING'].includes(a.status));
       for (const attempt of interrupted) { attempt.status = 'INTERRUPTED'; attempt.usage_unknown = true; }
@@ -206,12 +221,22 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       run.accounting = accountingForRun(run.attempts);
       if (!run.accounting.can_admit) { run.stop_code = 'USAGE_UNRESOLVED'; stop('BLOCKED', 'Earlier worker usage is unresolved; preserved work, no further worker admitted'); break; }
       if (worker === codexWorker) run.auth = await preflightCodex();
-      const context = await measure('context_ms', () => run.contract.schema_version===3?buildContext(run.worktree,run.contract,{results:run.results,previous:run.context_sent,thread:run.thread_id,conventions:run.project_profile?.conventions||[]}):codeMap(run.worktree, run.contract.goal, { maxFiles: 12, maxBytes: 40_000 }));
+      if (run.workflow) {
+        const selection = selectSession(run,task,recovered); recovered = false;
+        run.phase = taskPhase(run,task);
+        run.context_packet = contextPacket(run,task,remaining());
+        run.session_selection = selection;
+        persist('session_selected',{task:task.id,...selection,epoch:run.session?.epoch||null});
+      }
+      const context = await measure('context_ms', () => run.contract.schema_version===3?buildContext(run.worktree,run.contract,{results:run.results,previous:run.context_sent,thread:run.thread_id,conventions:run.project_profile?.conventions||[],byteLimit:run.workflow?8000:16000,matchConventions:Boolean(run.workflow),strictDelta:Boolean(run.workflow)}):codeMap(run.worktree, run.contract.goal, { maxFiles: 12, maxBytes: 40_000 }));
       if(context.manifest){const stored=await immutableJson(join(home,'runs',run.id,'contexts'),{...context,text:context.text});context.artifact=stored.path;}
       if (remaining() <= 0 || signal?.aborted) { stop('BUDGET_EXHAUSTED', 'Run deadline reached before worker admission'); break; }
       const prompt = promptFor(run, task, context);
       const attempt = { id: randomUUID(), task_id: task.id, number: used + 1, status: 'RESERVED', before: await fingerprint(run.worktree, run.contract), started: new Date().toISOString(),
         prompt_bytes:Buffer.byteLength(prompt), context_digest:context.digest||null, context_bytes:context.bytes||0, context_artifact:context.artifact||null, prompt_chars: prompt.length, context_files: context.files.length, prompt_mode: run.thread_id && used ? 'repair' : 'initial' };
+      if (run.workflow) Object.assign(attempt,{phase:run.phase,session_epoch:run.session?.epoch||null,
+        session_action:run.session_selection.fresh?'fresh':'resume',session_reason:run.session_selection.reason,
+        workflow_digest:run.workflow_digest,guidance_digest:run.workflow.guidance_digest});
       run.attempts.push(attempt); run.status = 'IMPLEMENTING'; run.last_active_at = Date.now();
       persist('attempt_reserved', { id: attempt.id, task: task.id }); // Atomic budget charge BEFORE execution.
       let result;
@@ -223,7 +248,11 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
         attempt.worker_ms = Date.now() - started;
       } catch (e) { result = { code: 1, diagnostic: String(e), usage: [] }; }
       run.thread_id = result.thread_id || run.thread_id;
-      if(context.manifest)run.context_sent={thread:run.thread_id,manifest:context.manifest};
+      if (run.workflow) {
+        attempt.thread_id = run.thread_id;
+        if (run.session) { run.session.turns++; run.session.compacted = Boolean(result.compacted); }
+      }
+      if(context.manifest)run.context_sent=result.compacted?null:{thread:run.thread_id,manifest:context.manifest};
       const usage = result.usage || []; run.usage.push(...usage);
       const accounting = classifyUsage(usage, result.accounting_source || 'worker');
       Object.assign(attempt, { status: result.code === 0 ? 'FINISHED' : 'INTERRUPTED', exit_code: result.code, usage_unknown: !usage.length,
@@ -234,11 +263,13 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       if (result.quota) { stop('BUDGET_EXHAUSTED', 'Provider reported a usage limit; reservation retained'); break; }
       if (result.code !== 0) { stop('BLOCKED', `Worker execution failed (${result.code}): ${attempt.reason || 'no valid completion event'}`); break; }
       await examine(runner,true);
+      if (run.workflow) attempt.notes = normalizeWorkerNotes(result.worker_notes,run);
       attempt.after = run.snapshot.source_digest; attempt.proof = run.results;
       attempt.failure_signature = hash(json(Object.entries(run.results).filter(([, p]) => p.status !== 'PASS').map(([id, p]) => [id, p.status, p.diagnostic])));
       attempt.passing = Object.values(run.results).filter(p => p.status === 'PASS').length;
       const verdict = deliveryDecision(run); attempt.decision = verdict?.[0] || 'REPAIR_READY'; attempt.reason = verdict?.[1] || 'Acceptance failed; targeted correction needed';
       persist('attempt_evaluated', { id: attempt.id, decision: attempt.decision });
+      if (run.workflow) { run.checkpoint=await saveCheckpoint(run,home,'attempt-evaluated');persist('checkpoint_saved',{digest:run.checkpoint.digest}); }
       if (afterAttempt) await afterAttempt(structuredClone(run)); // Test/observability callback, never an authority.
       if (verdict) { stop(...verdict); break; }
       if (attempt.after === attempt.before) { stop('STALLED', 'No candidate change and required behavior still fails'); break; }
@@ -261,6 +292,10 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
         if(run.status==='VERIFIED')run.verified_at ||= new Date().toISOString();
         if(run.status==='NEEDS_MANUAL_VERIFICATION'&&!run.human_review_wait?.end_at)run.human_review_wait ||= {start_at:new Date().toISOString(),end_at:null,duration_ms:null,active_human_review_ms:null,note:'Separate invocations: monotonic active human time is unmeasured'};
         run.active = false; run.last_active_at = Date.now(); persist('run_stopped', { status: run.status, reason: run.reason });
+        if (run.workflow && checkpointTrusted) {
+          run.phase = run.status==='NEEDS_MANUAL_VERIFICATION'?'review':SUCCESS.has(run.status)||run.status==='ALREADY_SATISFIED'?'complete':'stopped';
+          run.checkpoint=await saveCheckpoint(run,home,'run-stopped');persist('checkpoint_saved',{digest:run.checkpoint.digest});
+        }
         await exportState(run, home); await writeReport(run, home); Object.assign(input, run);
       }
     } finally { unlockRun(input.id, token, home); }
@@ -269,6 +304,7 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
 export async function effectiveStatus(run) {
   if (!SUCCESS.has(run.status)) return run.status;
   try {
+    validateWorkflow(run);
     if (!run.snapshot || run.snapshot.source_digest !== await fingerprint(run.worktree, run.contract)) return 'STALE_EVIDENCE';
     if (hash(json(await manifest(run.snapshot.path, run.contract))) !== run.snapshot.artifact_digest) return 'STALE_EVIDENCE';
     const version = await verifierIdentity();
@@ -316,6 +352,7 @@ export async function writeReport(run, home = dataHome()) {
     ...review.approved_test_fixtures.map(f => `- Unchanged approved test fixture: ${f.path} (${f.sha256}) — ${f.reason}`),
     '', '## Work measured',
     `Phase milliseconds: ${JSON.stringify(run.metrics || {})}`,
+    `Workflow: ${JSON.stringify(workflowSummary(run))}`,
     ...run.attempts.map(a => `- Attempt ${a.number}: ${a.prompt_mode || 'initial'} prompt, ${a.prompt_chars ?? 'unknown'} characters, ${a.context_files ?? 'unknown'} focused files; ${a.worker_ms ?? 'unknown'} worker ms`),
     '', '## Outcomes',
     ...run.contract.criteria.map(c => `- ${c.id}: ${run.results[c.id]?.status || 'NOT_RUN'} (${c.required ? 'required' : 'optional'}; ${run.results[c.id]?.strength || c.kind}) — ${c.text}`),

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "goal": "Correct addition for positive and mixed-sign inputs",
+  "type": "FIX",
+  "non_goals": [
+    "Preserve the exported add(a,b) interface."
+  ],
+  "assumptions": [],
+  "decisions": [],
+  "questions": [],
+  "outcomes": [
+    {
+      "criterion": {
+        "id": "ADD",
+        "kind": "probe",
+        "text": "Exported addition returns the independently known arithmetic result",
+        "argv": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "import {readFileSync} from 'node:fs';import {add} from './calc.mjs';console.log(JSON.stringify(add(...JSON.parse(readFileSync(0,'utf8')))))"
+        ],
+        "cases": [
+          {
+            "id": "positive",
+            "stdin": "[9,4]",
+            "expect_json": 13
+          },
+          {
+            "id": "mixed",
+            "stdin": "[-2,3]",
+            "expect_json": 1
+          }
+        ]
+      },
+      "source": "Worked arithmetic examples supplied with this example: 9 + 4 = 13; -2 + 3 = 1.",
+      "seam": "Exported add(a,b) in calc.mjs"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "correct-addition",
+      "title": "Correct observable addition",
+      "depends_on": [],
+      "criteria": [
+        "ADD"
+      ]
+    }
+  ],
+  "integration_criteria": [
+    "ADD"
+  ],
+  "execution": {
+    "policy": "lean"
+  },
+  "context": {
+    "policy": "evidence-v1",
+    "files": [
+      "calc.mjs"
+    ],
+    "symbols": [
+      "add"
+    ],
+    "frames": []
+  }
+}
