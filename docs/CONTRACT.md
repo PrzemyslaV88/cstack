@@ -36,7 +36,24 @@ At least one criterion must be required. Every task must refer to a required out
 
 `tasks` may contain `{id,title,depends_on,criteria}` nodes. The dependency graph must be acyclic and account for every criterion. Current passing evidence can satisfy multiple tasks. A task does not have to make a new edit if another task already delivered its outcome.
 
-`implementation_paths` is an optional list of relative paths or simple `*`/`**` patterns. Configuration, SQL, styles and templates can count as implementation. Without an explicit list, ordinary behavior-bearing artifacts count, while tests and documentation alone do not. Existing tests, direct node-test oracles and test/agent configuration changes require a snapshot-bound `change-review` approval.
+`implementation_paths` is an optional list of relative paths or simple `*`/`**` patterns. Configuration, SQL, styles and templates can count as implementation. Without an explicit list, ordinary behavior-bearing artifacts count, while tests and documentation alone do not. Existing tests, direct node-test oracles and test/agent configuration changes require a snapshot-bound `change-review` approval, except additive Python test changes described below.
+
+## Test changes (schema 3)
+
+`test_change_policy` is `additive` (the schema 3 default) or `review`. Under `review`, every changed existing test or configuration file needs `change-review`. Contracts frozen before this field existed keep `review` semantics; schema 2 contracts always use `review`.
+
+Under `additive`, the controller checks every sealed candidate whose required automated checks pass and whose tests changed. An edit to an existing Python test module needs no `change-review` only when all of these hold for that exact candidate:
+
+1. **Static additivity.** A controller-owned script (`src/runners/test-changes.py`) parses the baseline and candidate modules inside the isolated verifier with that interpreter's `ast`; it never imports or runs them. Every baseline module statement must remain unchanged and in order. Comments and formatting are ignored, so a comment-only edit is not additive. Additions may only be `test*` functions, `Test*` classes, `test*` methods in an existing test class, and plain imports. Additions must not rebind an existing name or builtin; decorators must be `pytest.mark.*` from `import pytest`; defaults, annotations and class bases must not call or compute. At least one test must be added. Fixtures, xunit setup hooks, module assignments, `__future__` and star imports all need review.
+2. **Original tests still pass.** Every required automated check is rerun on the candidate with all test files restored to their baseline bytes and new test files removed. Added tests therefore cannot be why the original checks pass.
+
+Configuration and collection files (`conftest.py`, `pytest.ini`, `package.json` and so on), node-test oracle files, deleted or mode-changed files, approved fixtures and non-Python test files always need review. If classification or the rerun fails, times out or is malformed, review is required.
+
+**Fail-to-pass evidence.** When a pytest `test-suite` check exists, added tests also run against the baseline implementation. Each one is recorded as `fail-to-pass` (fails on the baseline, passes on the candidate), `pass-to-pass`, `not-collected-on-baseline`, `not-run-on-baseline`, `not-passing-on-candidate` or `not-collected-on-candidate`. This is supporting evidence in `report`, `review` and `checks_for_snapshot.test_changes`. It never replaces a frozen probe or `outcome` approval, and it does not decide the exemption.
+
+The record is bound to the candidate digest, artifact digest, contract hash, runner identity and verifier identity, and stored as hashed evidence. A changed candidate, verifier or record makes a `VERIFIED` result `STALE_EVIDENCE`. Resume recomputes the record.
+
+Limits: JavaScript/TypeScript test edits still need review. Arguments to added `pytest.mark` decorators run at import. Added test bodies can still change shared state at run time; the original-tests rerun shows the current candidate does not depend on that, but cannot rule out future effects in the delivered file. The checks add one classifier run, one rerun of the required checks and one baseline suite run, and only when tests changed and the required checks pass.
 
 If the baseline already satisfies every declared check, cStack returns `ALREADY_SATISFIED`, not “bug fixed.” This often means the contract needs a better reproduction.
 

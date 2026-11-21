@@ -4,7 +4,7 @@ const versions={plan:1,context:'evidence-v1',adapters:1,profile:1};
 export async function createJobPlan({repo,profilePath,acceptancePath,goal,output,trace,sourceMode='clean',home=dataHome(),signal}){
  const planningStart=performance.now(),planningAt=new Date().toISOString();
  const reader=await repository(repo),profile=await readJson(profilePath),acceptance=await readJson(acceptancePath);
- exactKeys(acceptance,['criteria','model','reasoning','attempt_limit','budget','type','policy','implementation_paths','tasks','context','approved_test_fixtures'],'acceptance');requireThat(Array.isArray(acceptance.criteria)&&acceptance.criteria.length,'Acceptance criteria are required');
+ exactKeys(acceptance,['criteria','model','reasoning','attempt_limit','budget','type','policy','implementation_paths','tasks','context','approved_test_fixtures','test_change_policy'],'acceptance');requireThat(Array.isArray(acceptance.criteria)&&acceptance.criteria.length,'Acceptance criteria are required');
  await validateProfile(profile,reader);requireThat(profile.readiness==='ready','Project profile is not ready; run setup','PROJECT_NOT_READY');
  const environment=await checkEnvironment(profile,{cwd:reader.root,signal});const environment_digest=digestOf({image_id:environment.image_id,platform:environment.platform,versions:environment.versions,adapters:1});
  let context=acceptance.context||{policy:'evidence-v1',files:[],symbols:[],frames:[]};if(trace){const parsed=analyzeTrace(await readTraceFile(trace),reader);context={...context,frames:(parsed.frames||[]).filter(x=>x.path&&reader.known.has(x.path)).map(x=>({path:x.path,line:x.line}))};}

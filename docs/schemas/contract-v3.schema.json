@@ -555,6 +555,14 @@
       },
       "required": [],
       "additionalProperties": false
+    },
+    "test_change_policy": {
+      "enum": [
+        "review",
+        "additive"
+      ],
+      "default": "additive",
+      "description": "additive: existing Python test modules that only gain tests need no change review when every required check also passes with the original test files. review: every existing test/configuration change needs human review."
     }
   },
   "required": [

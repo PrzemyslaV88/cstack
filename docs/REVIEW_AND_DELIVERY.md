@@ -5,7 +5,9 @@ self-contained HTML page. Reports include private source; choose a private desti
 No server, JavaScript, remote fonts or automatic browser opening is involved.
 
 The report separates automated checks, human review, token accounting and delivery.
-Existing test/configuration edits may need review even when checks pass. Text labels
+Existing test/configuration edits may need review even when checks pass. Additive Python
+test edits proven for the exact candidate are labelled `additive test change` and need no
+change review; see [test changes](CONTRACT.md#test-changes-schema-3). Text labels
 such as removed assertion lines describe syntax, not whether a change is correct.
 A source or evidence change makes the report stale. Reading a report never approves it.
 

@@ -24,6 +24,8 @@ Probe comparisons occur in the controller, not inside candidate code. Node-test 
 
 Evidence is tied to candidate, artifact, contract, verifier and runner identities. Artifacts/logs are checksum-checked when reporting success. Snapshot copies are content-addressed; verification mounts them read-only. Human approval binds to exactly one candidate and cannot override a failed automated outcome.
 
+The additive test-change exemption trusts a static Python `ast` classification run inside the verifier, plus a rerun of every required check with the original test files restored. It does not inspect what added test bodies do at run time; see the limits in [CONTRACT.md](CONTRACT.md#test-changes-schema-3). Contracts that need every test edit reviewed should set `test_change_policy: "review"`.
+
 ## Recovery and process limits
 
 State/event/attempt reservations are atomic SQLite transactions. Optimistic revisions and a per-run owner lock prevent concurrent resumes. A dead owner can be recovered; interrupted reservations remain consumed. JSON reports/journals are exports only. Worker/verifier subprocesses have termination escalation and parent-death guardians. Docker cleanup is explicit; failures are blockers, not silently successful cancellation. Operating-system process semantics, kernel scheduling and externally killed guardians remain operational considerations rather than absolute guarantees.

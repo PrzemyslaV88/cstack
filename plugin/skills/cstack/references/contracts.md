@@ -40,8 +40,11 @@ add a behavioral probe for independent outcome evidence. A `manual` criterion is
 appropriate when human acceptance is genuinely necessary. Do not replace a
 testable requirement with a manual-only check merely to obtain a pass.
 
-Existing test/configuration edits stay protected. Extra tests are supporting
-evidence and do not replace the frozen checks. Reviewed `approved_test_fixtures`
+Existing test/configuration edits stay protected, except additive Python test
+edits under the default `test_change_policy: "additive"`: existing tests unchanged,
+only tests added, and every required check also passes with the original test files.
+Set `"review"` to review every test edit. Extra tests, including fail-to-pass
+results, are supporting evidence and do not replace the frozen checks. Reviewed `approved_test_fixtures`
 need an exact relative path, SHA-256 digest and review reason; only existing regular
 test files with those unchanged contents qualify. Production credentials must
 never be approved. Keep genuine secrets out of the candidate and dependency image.
