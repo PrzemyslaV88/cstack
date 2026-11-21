@@ -147,8 +147,9 @@ node --check bench/cstack_bridge.mjs
 ```
 
 On the recorded T7 Mac, set `DOCKER_CONTEXT=colima-cstack` before the Python command.
-Bridge tests select Docker on macOS and Linux namespaces on Linux by default;
-`CSTACK_TEST_RUNNER=docker` explicitly selects Docker on either platform.
+Bridge tests use cStack's host sandbox (Linux namespaces or macOS Seatbelt); cStack 0.6
+no longer has a Docker verifier. Harbor's SWE-bench task environments are still Docker
+images, so the comparison arms themselves still need Docker.
 
 The bridge tests exercise the **real** cStack controller and real isolated Node
 verification with a **scripted worker**. They verify plumbing, not AI effectiveness.

@@ -8,7 +8,7 @@ Contracts live outside the target repository. `init` writes a draft that cannot 
   "type": "FIX",
   "goal": "Repair incorrect calculator addition",
   "policy": "lean",
-  "runner": {"backend": "docker", "image": "node:22.16.0-bookworm-slim"},
+  "runner": {"backend": "host"},
   "attempt_limit": 2,
   "budget": {"max_attempts": 2, "max_active_ms": 600000, "worker_timeout_ms": 180000, "max_observed_tokens": 100000},
   "implementation_paths": ["calc.mjs", "settings.json"],
@@ -69,11 +69,17 @@ If the baseline already satisfies every declared check, cStack returns `ALREADY_
 
 Only explicitly named bundles are read. They cannot overwrite existing worktree paths. Their manifests must match the pinned digest before and after copying. The baseline includes them, and later ignored-input changes invalidate evidence. Bundle sources and destinations must be safe paths; symlinks may not escape the bundle/candidate. No secrets, host home directories, Docker socket or networking are provided to verification.
 
+## Runner and environment
+
+`runner` is `{"backend": "host", "dependencies": [...]}`. Checks run with the project's own installed dependencies inside an OS sandbox (Linux namespaces or macOS Seatbelt); see [SETUP.md](SETUP.md) and [SECURITY.md](SECURITY.md). `dependencies` lists up to eight git-ignored, untracked folders relative to the project root (for example `node_modules` or `.venv`). They are linked read-only into the worker's worktree and every candidate, excluded from candidate identity and delivery, and fingerprinted into the runner identity. `linux` is accepted as an alias of `host` for older contracts.
+
+Docker was removed in 0.6. A schema 3 contract with `"backend": "docker"` is rejected. Schema 2 contracts, whose historical default runner was Docker, still normalize to the same hash so stored runs stay auditable, but they are refused when a runner is created; set `runner.backend` to `host` in a new contract.
+
 ## Budgets and outcomes
 
 Each attempted worker invocation is reserved durably before launch. Per-task limits default to two in lean mode and three otherwise; run-wide defaults cap attempts at twelve. `max_active_ms` is cumulative active controller time, with conservative charging after interruption. `worker_timeout_ms` bounds each worker subprocess. `max_observed_tokens` stops admission of another turn; it cannot pre-price an ongoing provider request or report remaining ChatGPT allowance.
 
-`VERIFIED`, `INVESTIGATED`, `ALREADY_SATISFIED`, `NEEDS_MANUAL_VERIFICATION`, `BLOCKED`, `STALLED` and `BUDGET_EXHAUSTED` are distinct. Resume revalidates current code and preserves reservations. Environment changes and exhausted limits require an explicitly reviewed new run, not a silent budget reset.
+`VERIFIED`, `INVESTIGATED`, `ALREADY_SATISFIED`, `NEEDS_MANUAL_VERIFICATION`, `BLOCKED`, `STALLED` and `BUDGET_EXHAUSTED` are distinct. Status output, reports and reviews also give a three-way `outcome`: `done` (`VERIFIED`, `INVESTIGATED`), `needs_you` (`NEEDS_MANUAL_VERIFICATION`, `ALREADY_SATISFIED`) or `failed` (`BLOCKED`, `STALLED`, `BUDGET_EXHAUSTED`, `STALE_EVIDENCE`); `running` otherwise. The detailed status remains the reason. Resume revalidates current code and preserves reservations. Environment changes and exhausted limits require an explicitly reviewed new run, not a silent budget reset.
 
 Schema-1 command-only contracts must be migrated. An arbitrary successful command is not sufficient proof. v0.1 databases and reports remain untouched and are never promoted to v0.2 evidence.
 
@@ -82,7 +88,7 @@ Schema-1 command-only contracts must be migrated. An arbitrary successful comman
 
 Schema 2 retains its original normalization and hash. New plans use schema 3 with
 `source_mode` (`clean` by default; explicit `working-copy` in 0.5), optional paired project profile/environment
-digests, and context settings: policy evidence-v1 or filename-v1, explicit files,
+digests, and context settings: policy evidence-v1, filename-v1 or `none` (no controller-selected excerpts, for measuring whether injected context helps), explicit files,
 literal symbols and sanitized path/line frames. Raw trace messages are not frozen.
 
 A test-suite criterion selects pytest or Vitest, relative roots, frozen expected
@@ -91,6 +97,10 @@ no arbitrary shell/reporters/watch flags. A required test must actually pass;
 skips, xfail, xpass, todo and missing expected IDs do not satisfy acceptance.
 Malformed/incomplete streams are errors. Reported tests remain supporting proof;
 an external probe or actual human outcome review is still needed.
+
+## Worker authentication
+
+The Codex worker uses the ChatGPT sign-in by default. `CSTACK_CODEX_AUTH=api-key` explicitly selects an API key that was stored with Codex's own login command; preflight confirms Codex reports an API-key login and refuses otherwise. cStack never reads, stores or forwards keys, never switches modes on its own, and records the selected mode in the report.
 
 See [published schemas](schemas/contract-v3.schema.json) and [setup](SETUP.md).
 Semantic checks additionally enforce content identities, existing inputs, frozen

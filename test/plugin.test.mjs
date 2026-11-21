@@ -49,7 +49,7 @@ test('relocated analysis skills map Python and identify stack declarations witho
   await writeFile(join(project, 'app.py'), 'from helper import value\n');
   await writeFile(join(project, 'helper.py'), 'value=1\n');
   await writeFile(join(project, 'pyproject.toml'), '[project]\ndependencies=["flask>=2"]\n');
-  const env = { PATH: '/usr/bin:/bin', CSTACK_CODEX_BIN: '/nonexistent/codex', DOCKER_HOST: 'unix:///nonexistent/docker.sock' };
+  const env = { PATH: '/usr/bin:/bin', CSTACK_CODEX_BIN: '/nonexistent/codex' };
   const graph = await command([process.execPath, join(moved, 'skills/graph-map/scripts/map.mjs'), '--repo', project, '--format', 'json'], { cwd: root, env });
   assert.equal(graph.code, 0, graph.stderr);
   assert.ok(JSON.parse(graph.stdout).edges.some(e => e.from === 'app.py' && e.to === 'helper.py'));

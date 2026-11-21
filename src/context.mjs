@@ -5,6 +5,8 @@ export function utf8Lines(text,limit){let result='';for(const line of text.split
 function failingTests(results){const paths=[];for(const proof of Object.values(results||{}))for(const detail of proof.details||[])for(const c of detail.cases||[]){if(c.outcome==='passed')continue;try{const id=JSON.parse(c.id);if(Array.isArray(id)&&typeof id[0]==='string')paths.push(id[0]);}catch{paths.push(c.id.split('::')[0]);}}return [...new Set(paths)];}
 export async function buildContext(repo,contract,{results={},previous=null,thread=null,maxGraphFiles=2000,conventions=[]}={}){
  const settings=contract.context||{policy:'filename-v1',files:[],frames:[],symbols:[]};
+ // Ablation: send no controller-selected excerpts; the worker explores the repository itself.
+ if(settings.policy==='none')return {policy:'none',files:[],edges:[],text:'',manifest:[],bytes:0,digest:digestOf([]),coverage:{partial:false},omitted_explicit:[]};
  if(settings.policy==='filename-v1')return {...await focusedCodeMap(repo,contract.goal,{maxFiles:12,maxBytes:40000}),policy:'filename-v1',text:'',manifest:[],bytes:0,digest:digestOf([])};
  const reader=await repository(repo,{maxBytes:20000000}),explicit=settings.files.filter(p=>reader.known.has(p)),frames=settings.frames.filter(f=>reader.known.has(f.path)),failures=failingTests(results).filter(p=>reader.known.has(p));
  const priority=[...new Set([...explicit,...frames.map(f=>f.path),...failures])];

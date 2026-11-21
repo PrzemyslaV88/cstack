@@ -9,7 +9,7 @@ import { createRunner } from '../src/sandbox.mjs';
 import { assessTestChanges, currentExemptions, testChangePolicy } from '../src/test-changes.mjs';
 import { buildReview } from '../src/review.mjs';
 
-const runner = { backend, ...(backend === 'docker' ? { image: process.env.CSTACK_TEST_PYTEST_IMAGE || 'cstack-test-pytest:8.3.5' } : {}) };
+const runner = { backend };
 let pythonReady, pytestReady;
 async function inRunner(code) {
   try {
@@ -18,7 +18,7 @@ async function inRunner(code) {
   } catch (error) { return { code: 1, stdout: '', stderr: String(error.message || error) }; }
 }
 const needPython = () => pythonReady ??= inRunner('print("ok")').then(r => r.code === 0 && r.stdout.trim() === 'ok' ? null : 'Selected runner has no python: ' + r.stderr.slice(0, 200));
-const needPytest = () => pytestReady ??= inRunner('import pytest;print(pytest.__version__)').then(r => r.code === 0 && r.stdout.trim() === '8.3.5' ? null : 'Selected runner lacks pytest 8.3.5: ' + (r.stderr || r.stdout).slice(0, 200));
+const needPytest = () => pytestReady ??= inRunner('import pytest;print(pytest.__version__)').then(r => r.code === 0 && /^(7|8|9)\./.test(r.stdout.trim()) ? null : 'Selected runner lacks pytest 7-9: ' + (r.stderr || r.stdout).slice(0, 200));
 
 const driver = "import json,sys;sys.path.insert(0,'.');from calc import add;a,b=json.load(sys.stdin);print(json.dumps(add(a,b)))";
 const baseTests = 'from calc import add\n\n\ndef test_zero():\n    assert add(0, 0) == 0\n';

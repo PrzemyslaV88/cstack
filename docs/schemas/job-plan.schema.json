@@ -78,23 +78,24 @@
     "context_policy": {
       "enum": [
         "evidence-v1",
-        "filename-v1"
+        "filename-v1",
+        "none"
       ]
     },
     "versions": {
       "type": "object",
       "properties": {
         "plan": {
-          "const": 1
+          "const": 2
         },
         "context": {
           "const": "evidence-v1"
         },
         "adapters": {
-          "const": 1
+          "const": 2
         },
         "profile": {
-          "const": 1
+          "const": 2
         }
       },
       "required": [

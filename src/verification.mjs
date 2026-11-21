@@ -65,7 +65,7 @@ export async function verify(run, snapshot, runner, { home, signal, deadline = I
       const result=await executeTestSuite(c,runner,{cwd:snapshot.path,timeoutMs:Math.max(1,Math.min(c.timeout_ms,deadline-Date.now())),signal});
       outputs.push(result.stdout+'\n---stderr---\n'+result.stderr);details.push(result.parsed);pass=result.parsed.passed;error=result.parsed.error;
     } else {
-      const args = [c.argv[0], '--test-reporter=/runner/node-reporter.mjs', ...c.argv.slice(1)];
+      const args = [c.argv[0], '--test-reporter=' + runner.runnerPath('node-reporter.mjs'), ...c.argv.slice(1)];
       const result = await execute(args);
       const parsed = parseTestReport(result.stdout, c.expected_tests);
       outputs.push(result.stdout + '\n---stderr---\n' + result.stderr); details.push(parsed);

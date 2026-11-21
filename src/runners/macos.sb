@@ -1,0 +1,32 @@
+(version 1)
+; cStack verifier sandbox for macOS (Seatbelt). Parameters are passed with sandbox-exec -D.
+; Candidate code may read the system, the candidate, the runner scripts, the project's
+; installed dependencies and runtimes; it may write only its private scratch directory.
+; The home directory and the temporary directory (which hold controller state, other
+; candidates and credentials) are unreadable except for those explicit paths. No network.
+(deny default)
+(allow process-exec)
+(allow process-fork)
+(allow signal (target same-sandbox))
+(allow process-info* (target same-sandbox))
+(allow sysctl-read)
+(allow mach-lookup)
+(allow ipc-posix-shm)
+(allow ipc-posix-sem)
+(allow pseudo-tty)
+(allow file-read-metadata)
+(allow file-read*
+  (require-all
+    (require-not (subpath (param "HOME_DIR")))
+    (require-not (subpath (param "TMP_DIR")))))
+(allow file-read*
+  (subpath (param "CWD"))
+  (subpath (param "SCRATCH"))
+  (subpath (param "RUNNER")))
+;; CSTACK_READABLE
+(allow file-write*
+  (subpath (param "SCRATCH"))
+  (literal "/dev/null")
+  (literal "/dev/zero"))
+(allow file-ioctl (literal "/dev/null"))
+(deny network*)

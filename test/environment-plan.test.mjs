@@ -1,27 +1,60 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFile,writeFile,readdir} from 'node:fs/promises';import {join} from 'node:path';
-import {fixture} from './helpers/fixture.mjs';import {repository} from '../src/repository.mjs';import {discoverProfile} from '../src/project-profile.mjs';import {planEnvironment,exportEnvironmentPlan,prepareEnvironment,checkEnvironment} from '../src/environment-plan.mjs';import {digestOf} from '../src/util.mjs';
-const id='sha256:'+'a'.repeat(64),calls=[];const inspect=async args=>{calls.push(args);assert.deepEqual(args.slice(0,3),['docker','image','inspect']);return {code:0,stdout:JSON.stringify([{Id:id,Os:'linux',Architecture:'arm64',RepoDigests:[]}])};};
-async function setup(t,extra={}){const f=await fixture(t,{'package.json':JSON.stringify({scripts:{test:'node --test'},dependencies:{}}),'package-lock.json':JSON.stringify({lockfileVersion:3,packages:{'':{}}}),'private-canary.txt':'do not copy',...extra});return {...f,profile:await discoverProfile(await repository(f.repo),{image:'node:22.16.0-bookworm-slim'})};}
-test('ENV-01 ENV-03: existing local image readiness is independently probed offline',async t=>{const f=await setup(t);const ready=await checkEnvironment(f.profile,{cwd:f.repo});assert.equal(ready.environment_ready,true);assert.equal(ready.versions.adapter,'node-test');});
-test('ENV-02 ENV-04 ENV-05 ENV-07 ENV-09: minimal deterministic plan refuses drift before build',async t=>{
- const f=await setup(t),opts={repo:f.repo,recipe:'npm-lock',baseImage:'node:22.16.0-bookworm-slim',control:inspect};const a=await planEnvironment(f.profile,opts),b=await planEnvironment(f.profile,opts);assert.equal(digestOf(a.plan),digestOf(b.plan));assert.equal(a.inputs.length,2);
- const exported=await exportEnvironmentPlan(a,join(f.root,'plan with spaces'));assert.deepEqual((await readdir(join(exported.directory,'context'))).sort(),['Dockerfile','package-lock.json','package.json']);assert.ok((await readFile(join(exported.directory,'context','Dockerfile'),'utf8')).includes('--ignore-scripts'));assert.ok(calls.every(x=>x[1]==='image'));
- await writeFile(join(f.repo,'package-lock.json'),'{}');await assert.rejects(prepareEnvironment(exported.plan,exported.digest,{control:async()=>{throw Error('must not build');},home:f.home}),{code:'PROFILE_STALE'});assert.equal((await readFile(join(f.repo,'private-canary.txt'),'utf8')),'do not copy');
-});
-test('ENV-06 ENV-07: unsupported dependencies and missing images remain non-runnable',async t=>{const f=await setup(t,{'package.json':JSON.stringify({scripts:{test:'node --test'},dependencies:{bad:'file:../bad'}})});await assert.rejects(planEnvironment(f.profile,{repo:f.repo,recipe:'npm-lock',baseImage:'base',control:inspect}),{code:'ENVIRONMENT_MANUAL_REQUIRED'});
- const p=await planEnvironment(f.profile,{repo:f.repo,control:async()=>({code:1,stderr:'missing'})});assert.equal(p.plan.ready,false);assert.equal(p.plan.missing[0].code,'IMAGE_MISSING');await assert.rejects(planEnvironment(f.profile,{repo:f.repo,recipe:'manual'}),{code:'ENVIRONMENT_MANUAL_REQUIRED'});
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { writeFile, readdir, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fixture } from './helpers/fixture.mjs';
+import { repository } from '../src/repository.mjs';
+import { discoverProfile, profileShape } from '../src/project-profile.mjs';
+import { checkEnvironment, discoverDependencies } from '../src/environment-plan.mjs';
+import { setupProject } from '../src/setup.mjs';
+import { captureOrigin } from '../src/snapshot.mjs';
+import { command } from '../src/process.mjs';
+
+async function venvProject(t, pytestSource) {
+  const f = await fixture(t, { '.gitignore': '.venv\n', 'pyproject.toml': '[project]\nname = "calc"\n\n[tool.pytest.ini_options]\ntestpaths = ["tests"]\n', 'calc.py': 'def add(a, b):\n    return a + b\n',
+    'tests/test_calc.py': 'from calc import add\n\n\ndef test_add():\n    assert add(4, 2) == 6\n' });
+  const made = await command(['python3', '-m', 'venv', '--without-pip', '--system-site-packages', join(f.repo, '.venv')], { timeoutMs: 60000 });
+  if (made.code !== 0) { t.skip('python3 venv unavailable: ' + made.stderr.slice(0, 200)); return null; }
+  if (pytestSource !== undefined) {
+    // An isolated venv whose only "pytest" is the module given here.
+    await writeFile(join(f.repo, '.venv', 'pyvenv.cfg'), (await (await import('node:fs/promises')).readFile(join(f.repo, '.venv', 'pyvenv.cfg'), 'utf8')).replace('include-system-site-packages = true', 'include-system-site-packages = false'));
+    const lib = join(f.repo, '.venv', 'lib'), version = (await readdir(lib)).find(x => x.startsWith('python'));
+    if (pytestSource) { await mkdir(join(lib, version, 'site-packages', 'pytest'), { recursive: true }); await writeFile(join(lib, version, 'site-packages', 'pytest', '__init__.py'), pytestSource); }
+  }
+  return f;
+}
+
+test('ENV-01 ENV-03: host readiness is probed inside the sandbox with the project interpreter, offline and without changes', async t => {
+  const system = await command(['python3', '-c', 'import pytest;print(pytest.__version__)'], { timeoutMs: 10000 });
+  if (system.code !== 0) return t.skip('system pytest unavailable');
+  const f = await venvProject(t); if (!f) return;
+  const before = await captureOrigin(f.repo), reader = await repository(f.repo);
+  assert.deepEqual(await discoverDependencies(f.repo, '.', 'python'), ['.venv']);
+  const profile = await discoverProfile(reader, { adapter: 'pytest' });
+  assert.deepEqual(profile.environment, { mode: 'host', dependencies: ['.venv'], lockfiles: [] });
+  const env = await checkEnvironment(profile, { cwd: f.repo });
+  assert.equal(env.environment_ready, true); assert.equal(env.versions.adapter, 'pytest');
+  assert.match(env.versions.executable, /\.venv\/bin\/python/, 'the linked virtual environment provides the interpreter');
+  assert.deepEqual(env.dependencies.map(d => [d.path, d.kind]), [['.venv', 'python-venv']]);
+  const setup = await setupProject(f.repo, { adapter: 'pytest', home: f.home });
+  assert.equal(setup.ready, true, JSON.stringify(setup)); assert.deepEqual(setup.details.test.expected_tests, ['tests/test_calc.py::test_add']);
+  assert.deepEqual(await captureOrigin(f.repo), before, 'setup never modifies the project');
 });
 
-test('ENV-04 ENV-05: edited recipes and extra context files cannot reach Docker',async t=>{
- const {validateEnvironmentPlan}=await import('../src/environment-plan.mjs'),{hash}=await import('../src/util.mjs');const f=await setup(t),p=await planEnvironment(f.profile,{repo:f.repo,recipe:'npm-lock',baseImage:'node:22.16.0-bookworm-slim',control:inspect});const malicious={...p.plan,dockerfile_sha256:hash(p.dockerfile+'RUN echo unexpected\n')};assert.throws(()=>validateEnvironmentPlan(malicious),{code:'PLAN_CHANGED'});
- const out=await exportEnvironmentPlan(p,join(f.root,'extra-context'));await writeFile(join(out.directory,'context','unrelated-private.txt'),'private fixture');let invoked=0;await assert.rejects(prepareEnvironment(out.plan,out.digest,{home:f.home,control:async()=>{invoked++;throw Error('must not reach Docker');}}),{code:'PLAN_CHANGED'});assert.equal(invoked,0);
+test('ENV-06 ENV-07: missing or unsupported test runners stay non-runnable and cStack never installs them', async t => {
+  const missing = await venvProject(t, null); if (!missing) return;
+  const absent = await setupProject(missing.repo, { adapter: 'pytest', home: missing.home });
+  assert.equal(absent.ready, false); assert.equal(absent.code, 'PROJECT_DEPENDENCY_MISSING'); assert.match(absent.next_action, /yourself/);
+  const old = await venvProject(t, "__version__ = '6.2.5'\n");
+  const unsupported = await setupProject(old.repo, { adapter: 'pytest', home: old.home });
+  assert.equal(unsupported.ready, false); assert.equal(unsupported.code, 'TEST_RUNNER_VERSION_UNSUPPORTED');
+  const node = await fixture(t, { '.gitignore': 'node_modules\n', 'package.json': '{"type":"module","devDependencies":{"vitest":"4.0.18"}}', 'tests/a.test.js': "import {test} from 'vitest';test('a',()=>{});" });
+  const noModules = await setupProject(node.repo, { dependencies: ['node_modules'], adapter: 'vitest', home: node.home }).catch(e => ({ ready: false, code: e.code }));
+  assert.equal(noModules.ready, false); assert.equal(noModules.code, 'PROJECT_DEPENDENCY_MISSING');
 });
-test('ENV-01 ENV-02 ENV-03 ENV-09: real bounded npm preparation skips hooks and reuses its recorded image',async t=>{
- const {command}=await import('../src/process.mjs'),{dockerEnv}=await import('../src/environment-plan.mjs');const f=await setup(t,{'package.json':JSON.stringify({name:'cstack-environment-fixture',version:'1.0.0',scripts:{test:'node --test',postinstall:'node -e "process.exit(42)"'},dependencies:{}})});
- const result=await planEnvironment(f.profile,{repo:f.repo,recipe:'npm-lock',baseImage:'node:22.16.0-bookworm-slim'}),out=await exportEnvironmentPlan(result,join(f.root,'real preparation'));let builds=0;
- const control=async(args,options)=>{if(args[0]==='docker'&&args[1]==='build')builds++;return command(args,options);};
- // Only remove the tag created by this fixture, never prune unrelated Docker data.
- t.after(async()=>{if(builds)await command(['docker','image','rm','cstack-env:'+result.plan.environment_key],{env:dockerEnv(),timeoutMs:30000});});
- const first=await prepareEnvironment(out.plan,out.digest,{home:f.home,control});assert.equal(first.environment_ready,true);assert.equal(builds,1);assert.ok(first.journey[0].duration_ms>0);assert.equal(first.journey[0].status,'COMPLETED');
- const second=await prepareEnvironment(out.plan,out.digest,{home:f.home,control});assert.equal(second.environment_digest,first.environment_digest);assert.equal(second.image_id,first.image_id);assert.equal(builds,1);assert.equal(await readFile(join(f.repo,'private-canary.txt'),'utf8'),'do not copy');
+
+test('ENV-10: a cStack 0.5 Docker-image profile is refused with a rerun-setup instruction', () => {
+  const old = { schema_version: 1, scope: '.', evidence: [], runtime: { kind: 'node', declared_version: null }, test: { adapter: 'none', roots: [], expected_tests: [], plugins: [] },
+    environment: { mode: 'existing-image', image: 'node:22', lockfiles: [] }, conventions: [], readiness: 'ready', missing: [] };
+  assert.throws(() => profileShape(old), { code: 'PROFILE_STALE', message: /rerun setup/ });
 });

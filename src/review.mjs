@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {hash,json,digestOf,requireThat} from './util.mjs';
 import {verifierIdentity} from './verification.mjs';
 import {manifest,fingerprint,manifestChanges} from './snapshot.mjs';
-import {reviewDetails,effectiveStatus} from './core.mjs';
+import {reviewDetails,effectiveStatus,outcomeOf} from './core.mjs';
 import {accountingForRun} from './usage.mjs';
 import {command,cleanEnv} from './process.mjs';
 import {html} from './cli-output.mjs';
@@ -54,7 +54,7 @@ export async function buildReview(run) {
       preview:diff.binary?'Binary content: inspect hashes and the full artifact':lines.slice(0,count).join('\n'),truncated:lines.length>count});
   }
   const status=stale?'STALE_EVIDENCE':await effectiveStatus(run);
-  return {schema_version:1,run_id:run.id,candidate:run.snapshot.source_digest,contract:run.contract_hash,status,stale:stale||status==='STALE_EVIDENCE',
+  return {schema_version:1,run_id:run.id,candidate:run.snapshot.source_digest,contract:run.contract_hash,outcome:outcomeOf(status),status,stale:stale||status==='STALE_EVIDENCE',
     automated_checks:stale?'STALE':details.automated_checks,human_review:details.pending.length?'PENDING':'SATISFIED', approval_commands:details.pending.map(p=>`cstack approve ${run.id} --criterion ${p.criterion} --snapshot ${run.snapshot.source_digest} --note \"ACTUAL_HUMAN_REVIEW_NOTE\"`),
     journey:run.journey||[],human_review_wait:run.human_review_wait||null,request_recorded_at:run.request_recorded_at||run.created,verified_at:status==='VERIFIED'?run.verified_at||null:null,applied_at:run.delivery?.status==='APPLIED'?run.applied_at||null:null,accounting:accountingForRun(run.attempts),delivery:run.delivery?.status||'NOT_APPLIED',
     baseline:run.baseline,checks:run.contract.criteria.map(c=>({id:c.id,required:c.required,text:c.text,status:run.results[c.id]?.status||'NOT_RUN'})),
@@ -62,7 +62,7 @@ export async function buildReview(run) {
     note:'Syntax labels describe changed text, not semantic correctness. Reading this report is not approval.'};
 }
 export function reviewMarkdown(r) {
-  return [`# cStack review — ${r.run_id}`,'',`Status: **${r.status}**`,`Automated checks: **${r.automated_checks}**`,`Human review: **${r.human_review}**`,`Delivery: **${r.delivery}**`,
+  return [`# cStack review — ${r.run_id}`,'',`Outcome: **${r.outcome}** (${r.status})`,`Automated checks: **${r.automated_checks}**`,`Human review: **${r.human_review}**`,`Delivery: **${r.delivery}**`,
     `Tokens: ${r.accounting.total_tokens ?? 'unknown'} (known lower bound ${r.accounting.known_total_tokens})`,`Candidate: ${r.candidate}`,'',...r.next_actions,'',r.note,'',
     ...r.pending.map(p=>`- Review ${html(p.criterion)}: ${html(p.reason)} — ${p.paths.map(path=>'<code>'+html(path)+'</code>').join(', ')}`),'',
     ...r.files.flatMap(f=>[`## <code>${html(f.path)}</code>`,`${f.kind}; ${f.review_required?'human review required':f.protected?'additive test change':'supporting change'}${f.truncated?'; preview truncated':''}`,

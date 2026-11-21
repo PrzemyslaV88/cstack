@@ -10,13 +10,14 @@ current evidence determine completion.
 
 For a new repair:
 
-1. Use the user's requested project and observable outcome. Run `setup --repo`
-   with an explicitly selected existing verifier image when available. Discovery
+1. Use the user's requested project and observable outcome. Run `setup --repo`.
+   It discovers the project's installed, git-ignored dependency folders
+   (`node_modules`, `.venv`); pass `--dependencies` only to override. Discovery
    does not need model authentication. Resolve reported scope/adapter ambiguity
    from session context; ask only when the missing choice affects the outcome.
-   Missing dependencies are setup problems, not failed coding attempts. `env plan`
-   explains bounded Docker preparation; `env prepare --plan --expect-plan` performs
-   that explicit plan. Never install into the host or pull images implicitly.
+   Missing dependencies (`PROJECT_DEPENDENCY_MISSING`) are setup problems, not
+   failed coding attempts: tell the user which install command to run. Never
+   install dependencies yourself or ask for Docker; cStack 0.6 has no images.
 2. Write an acceptance JSON file outside the project with concrete independent
    probe inputs and expected outputs. Use the user's model choice (default
    `gpt-6.1-sol`) and applicable budgets. Do not replace an automatable outcome with
@@ -26,8 +27,8 @@ For a new repair:
    not describe it as a new fix. Ask a specific behavior question only when needed.
 3. Run a ready plan with `run --plan FILE --expect-plan SHA256`. Existing repair
    authorization is sufficient; do not add a generic confirmation ritual. Preserve
-   the same `CSTACK_HOME` and explicitly chosen Docker connection across commands.
-   Never change global Docker context. Clean source is the default; do not commit,
+   the same `CSTACK_HOME` across commands. Never modify the linked dependency
+   folders or the worktree's dependency links. Clean source is the default; do not commit,
    stash or discard existing edits to bypass it. When the repair includes existing edits, select `plan --source-mode working-copy`
    explicitly. It preserves staging and rejects any intervening included source
    change with `SOURCE_DIVERGED`; inspect the returned review and create a new plan.
@@ -54,10 +55,12 @@ instructed that approval; record their note. Do not supply approval on their beh
 just to finish a test or benchmark. A report is not an approval interface.
 
 The worker disables plugins, hooks and delegation. Keep those controls intact.
-Provider/account limits are recorded stops; no API-key billing fallback. Token
-counts are observed worker usage, not remaining subscription credits or necessarily
-the outer chat's total cost. Image dependencies prepare the verifier; they do not
-promise the host worker has the same environment. Credential-looking files remain
+Provider/account limits are recorded stops; no API-key billing fallback (API-key
+worker auth only when the user set `CSTACK_CODEX_AUTH=api-key`). Token counts are
+observed worker usage, not remaining subscription credits or necessarily the outer
+chat's total cost. The worker and the sandboxed verifier share the project's
+installed dependencies. Lead results with the `outcome` (`done`, `needs_you`,
+`failed`) and its reason. Credential-looking files remain
 blocked except exact previously reviewed and frozen test fixtures.
 
 Legacy explicit contracts still use `validate`, `run --repo --contract`, and

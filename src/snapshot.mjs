@@ -107,8 +107,10 @@ export async function changedPaths(repo, base = 'HEAD') {
 function inside(root, path) { const rel = relative(root, path); return rel === '' || (!rel.startsWith('..') && !rel.startsWith('/')); }
 
 // Includes ignored inputs and file modes. Symlinks may only resolve inside the candidate.
-export async function manifest(root, { rejectCredentials = true, approved_test_fixtures = [], maxFiles = 30_000, maxBytes = 256 * 1024 * 1024 } = {}) {
+export async function manifest(root, { rejectCredentials = true, approved_test_fixtures = [], maxFiles = 30_000, maxBytes = 256 * 1024 * 1024, runner } = {}) {
   root = await realpath(root); const entries = []; let total = 0;
+  // Declared dependency folders are environment, not candidate: only their exact link is recorded.
+  const dependencies = new Set(runner?.dependencies || []);
   const fixtures = new Map(normalizeTestFixtures(approved_test_fixtures).map(x => [x.path, x]));
   async function visit(dir, prefix = '') {
     for (const name of (await readdir(dir)).sort()) {
@@ -118,8 +120,13 @@ export async function manifest(root, { rejectCredentials = true, approved_test_f
       const fixture = fixtures.get(path);
       requireThat(!rejectCredentials || !credentialPath(path) || (fixture && info.isFile()),
         `Potential credential file ${path}: only an exact, reviewed test fixture can be admitted; no secret mounts are supported`, 'SECRET');
-      requireThat(entries.length < maxFiles, 'Snapshot file limit exceeded; use a prebuilt dependency image', 'SNAPSHOT');
+      requireThat(entries.length < maxFiles, 'Snapshot file limit exceeded; declare installed dependency folders in runner.dependencies', 'SNAPSHOT');
       const item = { path, mode: info.mode & 0o777 };
+      if (dependencies.has(path)) {
+        requireThat(info.isSymbolicLink(), `Dependency link ${path} was replaced; the environment is controller owned`, 'INTEGRITY');
+        const target = await readlink(full); requireThat(target.startsWith('/'), `Dependency link ${path} must be absolute`, 'INTEGRITY');
+        entries.push({ path, mode: 0o777, type: 'symlink', target, environment: true }); continue;
+      }
       if (info.isSymbolicLink()) {
         const target = await readlink(full); requireThat(!target.startsWith('/') && inside(root, resolve(dirname(full), target)), `External symlink denied: ${path}`, 'SNAPSHOT');
         try { requireThat(inside(root, await realpath(full)), `Escaping symlink denied: ${path}`, 'SNAPSHOT'); }
@@ -128,7 +135,7 @@ export async function manifest(root, { rejectCredentials = true, approved_test_f
       } else if (info.isDirectory()) { entries.push({ ...item, type: 'directory' }); await visit(full, path); }
       else {
         requireThat(info.isFile(), `Special file denied: ${path}`, 'SNAPSHOT');
-        total += info.size; requireThat(total <= maxBytes, 'Snapshot byte limit exceeded; use a prebuilt dependency image', 'SNAPSHOT');
+        total += info.size; requireThat(total <= maxBytes, 'Snapshot byte limit exceeded; declare installed dependency folders in runner.dependencies', 'SNAPSHOT');
         const sha256 = hash(await readFile(full));
         requireThat(!fixture || sha256 === fixture.sha256, `Approved test fixture changed: ${path}`, 'SECRET');
         entries.push({ ...item, type: 'file', bytes: info.size, sha256 });
@@ -146,7 +153,20 @@ export async function candidateIdentity(repo, policy = {}) {
   return { head, entries, digest: hash(json({ head, entries })) };
 }
 export async function fingerprint(repo, policy = {}) { return (await candidateIdentity(repo, policy)).digest; }
+export async function linkEnvironment(root, links = []) {
+  for (const link of links) {
+    const destination = join(root, link.path); await mkdir(dirname(destination), { recursive: true, mode: 0o755 });
+    await symlink(link.target, destination);
+  }
+}
+export async function checkEnvironmentLinks(root, links = []) {
+  for (const link of links) {
+    let target = null; try { target = await readlink(join(root, link.path)); } catch {}
+    requireThat(target === link.target, `Dependency link ${link.path} was changed or removed; the environment is controller owned`, 'INTEGRITY');
+  }
+}
 export async function sealCandidate(run, home) {
+  await checkEnvironmentLinks(run.worktree, run.environment?.links);
   const source = await candidateIdentity(run.worktree, run.contract);
   requireThat(source.head === run.base, 'Worktree HEAD moved; restore the original base before resuming', 'INTEGRITY');
   const dir = join(home, 'runs', run.id, 'snapshots', randomUUID());

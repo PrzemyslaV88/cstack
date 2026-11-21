@@ -4,6 +4,8 @@ import {repository,within} from './repository.mjs';
 import {analyzeStack,projectScopes} from './stack-analysis.mjs';
 import {exactKeys,requireThat,relativePath,digestOf,hash,compareText,dataHome} from './util.mjs';
 import {immutableJson,atomicJson,readJson} from './artifacts.mjs';
+import {normalizeDependencies} from './environment.mjs';
+import {discoverDependencies} from './environment-plan.mjs';
 
 const evidenceName=/^(package(?:-lock)?\.json|npm-shrinkwrap\.json|pyproject\.toml|setup\.cfg|requirements(?:[-.][^/]*)?\.(txt|in|lock)|pytest\.ini|tox\.ini|conftest\.py|AGENTS\.md|(?:vitest|vite|jest|tsconfig|jsconfig)\.config\.[^/]+|(?:tsconfig|jsconfig)\.json|\.python-version|\.node-version|\.nvmrc)$/;
 const digestPattern=/^[a-f0-9]{64}$/;
@@ -22,8 +24,8 @@ export function profileShape(p) {
   exactKeys(p.test,['adapter','roots','expected_tests','plugins'],'test');requireThat(['node-test','pytest','vitest','none'].includes(p.test.adapter),'Invalid adapter');
   uniqueStrings(p.test.roots,32,'test roots').forEach(x=>relativePath(x,{dot:true}));uniqueStrings(p.test.expected_tests,10000,'expected tests');uniqueStrings(p.test.plugins,16,'plugins');
   requireThat(p.test.plugins.every(x=>/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(x)) && (p.test.adapter==='pytest'||!p.test.plugins.length),'Invalid plugins');
-  exactKeys(p.environment,['mode','image','lockfiles'],'environment');requireThat(['existing-image','npm-lock','pip-hashes','manual'].includes(p.environment.mode),'Invalid environment mode');
-  requireThat(p.environment.image===null||typeof p.environment.image==='string'&&/^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/.test(p.environment.image),'Invalid image');
+  requireThat(p.environment&&p.environment.mode==='host','This profile uses a Docker image environment, which cStack 0.6 removed; rerun setup','PROFILE_STALE');
+  exactKeys(p.environment,['mode','dependencies','lockfiles'],'environment');normalizeDependencies(p.environment.dependencies);
   uniqueStrings(p.environment.lockfiles,8,'lockfiles').forEach(x=>relativePath(x));
   requireThat(Array.isArray(p.evidence)&&p.evidence.length<=256,'Invalid profile evidence');const seen=new Set();
   for(const e of p.evidence){exactKeys(e,['path','sha256','role'],'evidence');relativePath(e.path);requireThat(digestPattern.test(e.sha256)&&['configuration','lockfile','convention'].includes(e.role)&&!seen.has(e.path),'Invalid evidence');seen.add(e.path);}
@@ -33,7 +35,7 @@ export function profileShape(p) {
   for(const m of p.missing){exactKeys(m,['code','next_action'],'missing prerequisite');requireThat(typeof m.code==='string'&&typeof m.next_action==='string','Invalid diagnostic');}
   return p;
 }
-export async function discoverProfile(reader,{scope,adapter,image,conventions=[]}={}) {
+export async function discoverProfile(reader,{scope,adapter,dependencies,conventions=[]}={}) {
   const analysis=await analyzeStack(reader),{scopes,scopeFor}=projectScopes(reader);
   const apps=scopes.filter(s=>s.kind==='application'&&reader.files.some(f=>scopeFor(f.path)===s.id&&/^(package\.json|pyproject\.toml|setup\.cfg|requirements.*\.(txt|lock))$/.test(posix.basename(f.path))));
   if(scope===undefined){requireThat(apps.length<=1,'Select --scope: '+apps.map(s=>s.id).join(', '),'PROJECT_SCOPE_AMBIGUOUS');scope=apps[0]?.id||'.';}
@@ -54,11 +56,12 @@ export async function discoverProfile(reader,{scope,adapter,image,conventions=[]
   const selected=[];let bytes=0;
   for(const path of conventions){relativePath(path);const data=await reader.read(path);requireThat(data,'Convention file unavailable');bytes+=Buffer.byteLength(data.source);requireThat(bytes<=16384&&selected.length<8,'Convention limit exceeded');selected.push({path,sha256:data.sha256});}
   const lockfiles=paths.filter(p=>/(^|\/)(package-lock\.json|requirements(?:[-.].*)?\.lock)$/.test(p));
-  const missing=image?[]:[{code:'IMAGE_MISSING',next_action:'Select a prepared local image with --image, or create an explicit environment plan.'}];
+  const missing=[];
+  dependencies=normalizeDependencies(dependencies??await discoverDependencies(reader.root,scope,kind));
   if(reader.coverage().partial)missing.push({code:'PROFILE_PARTIAL',next_action:'Narrow the scope or resolve unreadable inputs.'});
   const runtime=analysis.runtimes.find(r=>scopeFor(r.evidence.path)===scope&&r.name===(kind==='node'?'Node.js':'Python'));
   return profileShape({schema_version:1,scope,evidence:await profileEvidence(reader,scope,selected),runtime:{kind,declared_version:runtime?.declared_version||null},
-    test:{adapter,roots,expected_tests:[],plugins:[]},environment:{mode:image?'existing-image':lockfiles.some(p=>p.endsWith('package-lock.json'))?'npm-lock':lockfiles.length?'pip-hashes':'manual',image:image||null,lockfiles},
+    test:{adapter,roots,expected_tests:[],plugins:[]},environment:{mode:'host',dependencies,lockfiles},
     conventions:selected,readiness:'draft',missing});
 }
 export async function validateProfile(profile,reader) {

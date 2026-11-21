@@ -1,5 +1,7 @@
 import { requireThat, integer, argv, safeId, exactKeys, relativePath } from './util.mjs';
 import { normalizeTestFixtures } from './file-policy.mjs';
+import { normalizeDependencies } from './environment.mjs';
+import { runnerBackend } from './sandbox.mjs';
 const validTypes = ['FIX', 'FEATURE', 'REFACTOR', 'INVESTIGATE'];
 function strings(value, name, nonempty = false) {
   requireThat(Array.isArray(value) && (!nonempty || value.length) && value.every(x => typeof x === 'string' && x.trim()) && new Set(value).size === value.length, `${name} must be an array of unique strings`);
@@ -119,10 +121,18 @@ export function normalizeContract(raw) {
   for (const task of normalizedTasks) visit(task.id);
   for (const task of normalizedTasks) requireThat(task.criteria.some(id => criteria.some(c => c.id === id && c.required)), `Task ${task.id} needs a required outcome; do not create edit-only nodes`);
   requireThat(new Set(normalizedTasks.flatMap(t => t.criteria)).size === criteria.length, 'Every criterion must be assigned to a task');
-  const runner = raw.runner || { backend: 'docker' };
-  if (v3) exactKeys(runner, ['backend','image'], 'runner');
-  requireThat(runner && ['docker', 'linux'].includes(runner.backend), 'runner.backend must be docker or linux; no host execution');
-  requireThat(!runner.image || (typeof runner.image === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/.test(runner.image)), 'Invalid runner image');
+  // Schema 2's historical default is kept for hash stability; it is refused when run.
+  const runner = raw.runner || { backend: v3 ? 'host' : 'docker' };
+  requireThat(runner && typeof runner === 'object' && !Array.isArray(runner), 'runner must be an object');
+  if (v3) { runnerBackend(runner); exactKeys(runner, ['backend','dependencies'], 'runner'); } // Rejects Docker with a migration message.
+  else {
+    // Schema 2 normalizes exactly as before so frozen contracts keep their hashes; a Docker
+    // backend is refused only when a runner is created.
+    exactKeys(runner, ['backend','image','dependencies'], 'runner');
+    requireThat(['docker', 'linux', 'host'].includes(runner.backend), 'runner.backend must be host; no unsandboxed fallback');
+    requireThat(!runner.image || (typeof runner.image === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/.test(runner.image)), 'Invalid runner image');
+  }
+  const dependencies = normalizeDependencies(runner.dependencies || []);
   const workspaceInputs = raw.workspace_inputs || [];
   requireThat(Array.isArray(workspaceInputs) && workspaceInputs.length <= 8, 'workspace_inputs must be a bounded array');
   const inputDestinations = new Set();
@@ -141,7 +151,7 @@ export function normalizeContract(raw) {
     implementation_paths: paths(raw.implementation_paths || [], 'implementation_paths'),
     workspace_inputs: workspaceInputs.map(x => ({ source: x.source, destination: x.destination, digest: x.digest })),
     approved_test_fixtures: normalizeTestFixtures(raw.approved_test_fixtures),
-    runner: { backend: runner.backend, ...(runner.image ? { image: runner.image } : {}) },
+    runner: v3 ? { backend: runner.backend, dependencies } : { backend: runner.backend, ...(runner.image ? { image: runner.image } : {}), ...(dependencies.length ? { dependencies } : {}) },
     budget: { max_attempts: integer(b.max_attempts, Math.min(12, attemptLimit * tasks.length), 1, 100, 'max_attempts'),
       max_active_ms: integer(b.max_active_ms, 1_800_000, 100, 86_400_000, 'max_active_ms'),
       worker_timeout_ms: integer(b.worker_timeout_ms, 600_000, 100, 3_600_000, 'worker_timeout_ms'),
@@ -156,7 +166,7 @@ function normalizeProject(value) {
 }
 function normalizeContext(value = {}) {
   exactKeys(value, ['policy','files','symbols','frames'], 'context');
-  const policy = value.policy || 'evidence-v1'; requireThat(['evidence-v1','filename-v1'].includes(policy), 'Invalid context policy');
+  const policy = value.policy || 'evidence-v1'; requireThat(['evidence-v1','filename-v1','none'].includes(policy), 'Invalid context policy');
   const files = strings(value.files || [], 'context files').map(p => relativePath(p));
   const symbols = strings(value.symbols || [], 'context symbols');
   const frames = value.frames || [];

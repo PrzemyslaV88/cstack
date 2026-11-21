@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile, chmod, realpath, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { beginRun, processRun, effectiveStatus, command } from '../src/core.mjs';
 import { cleanEnv } from '../src/process.mjs';
@@ -28,8 +29,7 @@ console.log(JSON.stringify({type:'turn.completed',usage:{input_tokens:100,cached
   await writeFile(binary, script); await chmod(binary, 0o755);
   const path = join(f.root, 'contract.json'); await writeFile(path, json(contract()));
   const env = cleanEnv({ CSTACK_HOME: f.home, CSTACK_CODEX_BIN: binary, OPENAI_API_KEY: 'synthetic-not-a-real-key',
-    ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}),
-    ...(process.env.DOCKER_HOST ? { DOCKER_HOST: process.env.DOCKER_HOST } : {}) });
+ });
   const start = await command([process.execPath, cli, 'run', '--repo', f.repo, '--contract', path], { env, timeoutMs: 15000 });
   assert.equal(start.code, 0, start.stderr + start.stdout); assert.match(start.stdout, /"status": "VERIFIED"/);
   const id = start.stdout.match(/Run: ([A-Za-z0-9-]+)/)[1];
@@ -63,26 +63,18 @@ test('changed dependency bundle cannot enter a run under its previous digest', a
   const digest = hash(json(await manifest(bundle))); await writeFile(join(bundle, 'input.json'), '{"altered":true}');
   await assert.rejects(beginRun({ ...f, contract: contract({ workspace_inputs: [{ source: bundle, destination: 'deps', digest }] }) }), /digest mismatch/);
 });
-test('Docker adapter pins image ID, restricts capabilities/resources, and always requests cleanup', async t => {
-  const f = await fixture(t), calls = [];
-  const previous = { DOCKER_HOST: process.env.DOCKER_HOST, OPENAI_API_KEY: process.env.OPENAI_API_KEY };
-  t.after(() => { for (const [key, value] of Object.entries(previous)) {
-    if (value === undefined) delete process.env[key]; else process.env[key] = value;
-  } });
-  process.env.DOCKER_HOST = 'unix:///tmp/cstack-test-docker.sock';
+test('host runner hides credentials and the home directory, keeps the candidate read-only and drops privileges', async t => {
+  const f = await fixture(t);
+  const previous = process.env.OPENAI_API_KEY; t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; });
   process.env.OPENAI_API_KEY = 'synthetic-not-a-real-key';
-  const control = async (args, opts) => {
-    calls.push({ args, opts });
-    if (args.includes('inspect')) return { code: 0, stdout: 'sha256:' + 'a'.repeat(64), stderr: '' };
-    return { code: 0, stdout: 'ok', stderr: '' };
-  };
-  const runner = await createRunner({ backend: 'docker' }, { control });
+  const runner = await createRunner({ backend: 'host' });
   const alias = join(f.root, 'repo-link'); await symlink(await realpath(f.repo), alias, 'dir');
-  await runner.execute(['node', '-e', 'console.log(1)'], { cwd: alias, timeoutMs: 1000 });
-  const launch = calls.find(c => c.args[1] === 'run');
-  for (const flag of ['--network=none', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges', '--user=65534:65534', '--pids-limit=128', '--memory=1g', '--pull=never']) assert.ok(launch.args.includes(flag), flag);
-  assert.ok(launch.args.includes('sha256:' + 'a'.repeat(64))); assert.ok(calls.some(c => c.args[1] === 'rm'));
-  assert.equal(launch.opts.env.OPENAI_API_KEY, undefined);
-  assert.ok(calls.every(c => c.opts.env.DOCKER_HOST === process.env.DOCKER_HOST));
-  assert.ok(launch.args.includes(`type=bind,src=${await realpath(f.repo)},dst=/candidate,readonly`));
+  const run = script => runner.execute(['/bin/sh', '-c', script], { cwd: alias, timeoutMs: 10000 });
+  assert.equal((await run('printf "%s" "${OPENAI_API_KEY-unset}"')).stdout, 'unset', 'no credential variables reach candidate code');
+  assert.equal((await run('cat calc.mjs')).stdout, 'export const add=(a,b)=>a-b;\n', 'the candidate is reachable through a symlinked path');
+  assert.notEqual((await run('echo x > calc.mjs')).code, 0); assert.equal(await readFile(join(f.repo, 'calc.mjs'), 'utf8'), 'export const add=(a,b)=>a-b;\n');
+  const home = homedir();
+  assert.notEqual((await run(`ls ${JSON.stringify(home)} >/dev/null 2>&1 && echo visible || echo hidden`)).stdout.trim(), 'visible', 'the real home directory is hidden');
+  assert.equal((await run('ulimit -n')).stdout.trim(), '256');
+  if (runner.sandbox === 'linux-namespaces') assert.notEqual((await run('mount -t tmpfs none /tmp')).code, 0, 'namespace root has no capabilities');
 });

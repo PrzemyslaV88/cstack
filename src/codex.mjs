@@ -5,7 +5,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { classifyUsage } from './usage.mjs';
+import { sandboxPath } from './environment.mjs';
 const limits = new Set(['rate_limit_exceeded', 'usage_limit_reached', 'insufficient_quota', 'credits_exhausted']);
+// Worker authentication is chosen explicitly by the operator. "chatgpt" (default) uses the
+// subscription login; "api-key" uses an API key the operator stored with Codex's own login
+// command. cStack never reads, stores or forwards a key, and never switches modes on its own.
+export function workerAuth(value = process.env.CSTACK_CODEX_AUTH) {
+  const mode = value || 'chatgpt';
+  if (!['chatgpt', 'api-key'].includes(mode)) throw new CstackError('CSTACK_CODEX_AUTH must be chatgpt or api-key', 'AUTH');
+  return mode;
+}
 export function parseCodexEvents(lines) {
   let thread = null, complete = false, failed = false, quota = false, malformed = false;
   const usage = [], errors = [];
@@ -30,12 +39,12 @@ export function parseCodexEvents(lines) {
 }
 export function codexArgs(run) {
   const settings = {
-    forced_login_method: 'chatgpt', model_provider: 'openai', approval_policy: 'never', sandbox_mode: 'workspace-write',
+    forced_login_method: run.auth?.authentication === 'api-key' ? 'api' : 'chatgpt', model_provider: 'openai', approval_policy: 'never', sandbox_mode: 'workspace-write',
     'sandbox_workspace_write.network_access': false, 'sandbox_workspace_write.exclude_slash_tmp': true,
     'sandbox_workspace_write.exclude_tmpdir_env_var': true, 'features.multi_agent': false, 'features.multi_agent_v2': false, 'agents.enabled': false,
     'features.hooks': false, 'features.plugins': false, 'features.apps': false, 'features.goals': false,
     web_search: 'disabled', allow_login_shell: false, 'shell_environment_policy.inherit': 'none',
-    'shell_environment_policy.set': { PATH: cleanEnv().PATH }, model_reasoning_effort: run.contract.reasoning || 'medium'
+    'shell_environment_policy.set': { PATH: sandboxPath(run.environment?.links || []) }, model_reasoning_effort: run.contract.reasoning || 'medium'
   };
   // TOML inline tables use '=' rather than JSON ':'; primitive settings are JSON-compatible TOML.
   const override = Object.entries(settings).flatMap(([k, v]) => ['-c', k + '=' + (typeof v === 'object' ? '{ PATH = ' + JSON.stringify(v.PATH) + ' }' : JSON.stringify(v))]);
@@ -64,9 +73,12 @@ export async function preflightCodex() {
   if (features.code !== 0 || controls.some(name => !features.stdout.split('\n').some(line => new RegExp(`^${name}\\s+.*\\bfalse\\s*$`).test(line.trim())))) {
     throw new CstackError('Cannot confirm disabled subagents/hooks/plugins/apps/goals in the installed Codex CLI.', 'CAPABILITY');
   }
-  const login = await command([bin, '-c', 'forced_login_method="chatgpt"', 'login', 'status'], { env: workerEnv(), timeoutMs: 10000 });
-  if (login.code !== 0 || !/chatgpt/i.test(login.stdout + login.stderr)) throw new CstackError('A confirmed ChatGPT Codex login is required. API-key login will not be used.', 'AUTH');
-  return { authentication: 'chatgpt', allowance: 'unknown', capabilities: 'controlled config, no subagents, workspace-write' };
+  const mode = workerAuth();
+  const login = await command([bin, '-c', `forced_login_method="${mode === 'api-key' ? 'api' : 'chatgpt'}"`, 'login', 'status'], { env: workerEnv(), timeoutMs: 10000 });
+  const status = login.stdout + login.stderr;
+  if (mode === 'chatgpt' && (login.code !== 0 || !/chatgpt/i.test(status))) throw new CstackError('A confirmed ChatGPT Codex login is required. API-key login is used only when CSTACK_CODEX_AUTH=api-key is set explicitly.', 'AUTH');
+  if (mode === 'api-key' && (login.code !== 0 || !/api key/i.test(status))) throw new CstackError('CSTACK_CODEX_AUTH=api-key needs a key stored with Codex\'s own login command (codex login --with-api-key). cStack never reads or forwards keys.', 'AUTH');
+  return { authentication: mode, allowance: mode === 'api-key' ? 'billed to the API account' : 'unknown', capabilities: 'controlled config, no subagents, workspace-write' };
 }
 export async function codexWorker({ run, prompt, timeoutMs, signal, onSpawn }) {
   const lines = [];

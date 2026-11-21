@@ -15,7 +15,6 @@ fi
 comparison_action="${1:-doctor}"
 if [[ $# -gt 0 ]]; then shift; fi
 if [[ "$comparison_action" == test ]]; then
-  export CSTACK_TEST_RUNNER=docker
   npm run check
   npm test
   "$comparison_python" -m unittest discover -s bench -t . -p 'test_*.py' -v

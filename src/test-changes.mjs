@@ -112,7 +112,7 @@ export async function assessTestChanges(run,runner,{home,signal,deadline=Infinit
     try{
       requireThat(bytes<=MAX_CLASSIFIER_INPUT,'Changed test files exceed the classifier input limit');
       const remaining=deadline-Date.now();requireThat(remaining>0,'Active run deadline exhausted');
-      const result=await runner.execute(['python','-I','/runner/test-changes.py'],{cwd:run.snapshot.path,input:JSON.stringify({files:requested}),timeoutMs:Math.max(1,Math.min(60_000,remaining)),signal});
+      const result=await runner.execute(['python','-I',runner.runnerPath('test-changes.py')],{cwd:run.snapshot.path,input:JSON.stringify({files:requested}),timeoutMs:Math.max(1,Math.min(60_000,remaining)),signal});
       const parsed=parseClassifier(result,requested);classifier={status:'COMPLETED',python:parsed[0]?.python||null};
       for(const [i,f] of pending.entries()){
         const r=parsed[i];f.added_tests=r.added_tests;f.reasons=r.reasons.map(x=>redact(x));

@@ -11,7 +11,7 @@ test('CLI-01 CLI-02 CLI-03: analysis/help are independent of SQLite, repair stat
   const repo=join(dir,'repo'); await mkdir(repo); await writeFile(join(repo,'a.py'),'import os\n');
   const home=join(dir,'must-not-exist');
   for(const args of [['--help'],['map','--repo',repo],['analyze-stack','--repo',repo]]) {
-    const r=await command([process.execPath,cli,...args],{env:cleanEnv({CSTACK_HOME:home,CSTACK_CODEX_BIN:'/missing/codex',DOCKER_HOST:'unix:///missing/docker'})});
+    const r=await command([process.execPath,cli,...args],{env:cleanEnv({CSTACK_HOME:home,CSTACK_CODEX_BIN:'/missing/codex'})});
     assert.equal(r.code,0,r.stderr); assert.doesNotMatch(r.stderr,/SQLite|ExperimentalWarning/);
   }
   await assert.rejects(access(home));

@@ -2,51 +2,36 @@
 
 ## What is untrusted
 
-The candidate, its dependencies, package hooks, tests and stdout are untrusted. A test runner importing generated application code is also executing candidate code. The controller's installed source, operating system, Docker daemon/image, contract author and human approver are trusted.
+The candidate, its dependencies, package hooks, tests and stdout are untrusted. A test runner importing generated application code is also executing candidate code. The controller's installed source, operating system and its sandbox, host toolchain, the project's installed dependency folders, contract author and human approver are trusted.
 
 ## Verification boundary
 
-Docker is the default: a locally available image is resolved to an immutable image ID and executed with `--pull=never`, no network, a read-only root and candidate mount, no capabilities, no-new-privileges, UID 65534, PID/memory/CPU limits and bounded scratch space. Only candidate bytes and controller-owned reporter code are mounted. No host home, credential environment, controller state or Docker socket enters the container. The entrypoint is explicitly set. Lifecycle cleanup attempts are mandatory and failures are reported.
+There is one verifier backend, `host`: the project's own installed environment inside an OS sandbox. There is no image, daemon or unsandboxed fallback, and a contract that asks for Docker is refused with a migration message.
 
-The Linux alternative uses fresh user/mount/network/PID namespaces, a restricted root, read-only candidate/system-runtime mounts, an empty `/proc`, private scratch space, and dropped capabilities before candidate execution. It is explicitly selected, capability-probed and fails closed. It is not a portable substitute for Docker's cgroup resource controls: native CPU/file limits are per process, and the host toolchain remains part of the trusted environment. Use Docker for stronger resource containment and reproducible packaged environments. Neither backend protects against a host kernel/runtime vulnerability; hostile production workloads need a stronger, separately evaluated isolation boundary.
+- **Linux:** fresh user/mount/network/PID namespaces, a minimal tmpfs root with read-only `/usr`, `/lib`, `/bin` and `/sbin`, the candidate read-only at `/candidate`, the controller's runner scripts and Node binary read-only, the project's declared dependency folders and the runtimes they need read-only at their real paths, an empty `/proc`, a loopback-only `/etc/hosts`, private `/tmp`, CPU/file/descriptor limits, and all capabilities dropped with `no_new_privs` before candidate code runs. Home directories, sockets, credentials and controller state are not mounted. The network namespace has no interfaces.
+- **macOS:** Seatbelt (`sandbox-exec`) with a deny-by-default profile. Reads are allowed outside the home and temporary directories, and inside them only for the candidate, the scratch directory, the runner scripts, the dependency folders and runtime prefixes. Writes are allowed only in the scratch directory. All network access is denied, and `HOME`/`TMPDIR` point at the scratch directory.
+- **Environment:** only `PATH`, `HOME`, `TMPDIR`, locale and `TZ`, plus the candidate/runner/scratch locations, reach candidate code. No API keys, cloud tokens, proxies or loader variables are passed.
+- **Self-test:** before a runner is first used in a process, it must show on this machine that candidate code runs, cannot modify the candidate, cannot read a host file outside the allowed paths, cannot reach a listening loopback port, and can write its scratch space. Any failure refuses verification (`ISOLATION`).
 
-Snapshotting includes ignored files and mode/symlink identities, rejects escaping links and special files, and rejects common credential filenames. The only exception is an existing test fixture explicitly reviewed in the frozen contract by exact path and SHA-256 contents, with a review reason. It must be a regular file in the starting revision; new, changed, removed, renamed or symlink-substituted credential files remain blocked. Approval is a trust decision by the contract author, not proof that a file is harmless. Published test-only key material must never be confused with production credentials. This is conservative detection, **not a guarantee that no secret can exist in arbitrary source code**. Do not put real credentials/customer data in the candidate or a dependency image. Logs use limited pattern redaction, not universal secret detection. Keep the local state directory private and protect the host account.
-
-## Worker boundary
-
-The actual coding worker uses Codex workspace-write with network disabled, additional writable temporary roots disabled, shell environment inheritance disabled, and controlled configuration. ChatGPT login is forced; API-key variables are not forwarded. Required disabled features are capability-checked. Project Codex config/hooks are rejected rather than silently merged into policy.
-
-cStack does not wrap the entire Codex application in its own VM. Codex owns authentication and its tool sandbox. Do not treat workspace-write as a guarantee that the worker cannot read every sensitive host file. Use a dedicated development account/machine for sensitive repositories. cStack does not promise an enforcement boundary against its own privileged host operator.
-
-## Evidence and approvals
-
-Probe comparisons occur in the controller, not inside candidate code. Node-test streams are supporting evidence, not independent proof by themselves. Every claim is bounded by the quality of the declared checks; a program can overfit examples. Use held-out or broader checks and meaningful manual acceptance for consequential changes.
-
-Evidence is tied to candidate, artifact, contract, verifier and runner identities. Artifacts/logs are checksum-checked when reporting success. Snapshot copies are content-addressed; verification mounts them read-only. Human approval binds to exactly one candidate and cannot override a failed automated outcome.
-
-The additive test-change exemption trusts a static Python `ast` classification run inside the verifier, plus a rerun of every required check with the original test files restored. It does not inspect what added test bodies do at run time; see the limits in [CONTRACT.md](CONTRACT.md#test-changes-schema-3). Contracts that need every test edit reviewed should set `test_change_policy: "review"`.
-
-## Recovery and process limits
-
-State/event/attempt reservations are atomic SQLite transactions. Optimistic revisions and a per-run owner lock prevent concurrent resumes. A dead owner can be recovered; interrupted reservations remain consumed. JSON reports/journals are exports only. Worker/verifier subprocesses have termination escalation and parent-death guardians. Docker cleanup is explicit; failures are blockers, not silently successful cancellation. Operating-system process semantics, kernel scheduling and externally killed guardians remain operational considerations rather than absolute guarantees.
+Compared with the former Docker verifier, the host runner trusts the project's installed dependencies and the host toolchain: they are part of the environment being verified, as they already were for the coding worker. Per-process CPU, file and descriptor limits replace Docker's cgroup memory/PID limits. Neither design protects against a host kernel vulnerability; hostile production workloads need a separately evaluated isolation boundary. Use a dedicated machine or VM for code you would not run yourself.
 
 ## External effects
 
-No automatic image pull, network dependency installation, billable API fallback, Git push, merge or production deployment. Explicit export copies only a currently verified candidate to a new directory. cStack does not delete the original checkout or discard user work. Failed creation removes only its own newly created, not-yet-registered scratch worktree.
+No image build or pull, dependency installation, billable API fallback (API-key worker auth only with an explicit `CSTACK_CODEX_AUTH=api-key`), Git push, merge or production deployment. Explicit export copies only a currently verified candidate to a new directory. cStack does not delete the original checkout or discard user work. Failed creation removes only its own newly created, not-yet-registered scratch worktree.
 
 ## Primary integration references
 
 - https://learn.chatgpt.com/docs/non-interactive-mode
 - https://learn.chatgpt.com/docs/config-file/config-reference
-- https://docs.docker.com/engine/containers/run/
+- https://man7.org/linux/man-pages/man7/user_namespaces.7.html
 - https://nodejs.org/api/test.html
 - https://git-scm.com/docs/git-worktree
 
 
 ## Upgrade boundaries
 
-Dependency preparation uses explicit frozen Docker plans and never host installs.
-Test adapters execute in disposable scratch copies with image-owned dependencies;
+cStack never prepares or installs dependencies; it links the project's installed, git-ignored
+dependency folders read-only and fingerprints them. Test adapters execute in disposable scratch copies;
 source snapshots remain read-only. Reporter output is not cryptographic proof against
 hostile candidate code and cannot by itself grant VERIFIED.
 

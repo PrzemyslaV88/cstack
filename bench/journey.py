@@ -29,7 +29,7 @@ def source_digest(root):
 def validate_cases(cases,stage):
     if len(cases)!=(2 if stage=='smoke' else 12) or len({c['id'] for c in cases})!=len(cases): raise ValueError('Use exactly 2 smoke or 12 full fresh cases')
     for c in cases:
-        required={'id','language','complexity','source_kind','source_url','license','reviewed','repo','image','goal','public_criteria','private_criteria','regression_criteria','gold_patch'}
+        required={'id','language','complexity','source_kind','source_url','license','reviewed','repo','dependencies','goal','public_criteria','private_criteria','regression_criteria','gold_patch'}
         if set(c)!=required or c['id'] in OLD_CASES or not c['reviewed']: raise ValueError('Case must be fresh, reviewed and fully specified')
         if c['language'] not in ('python','javascript') or c['complexity'] not in ('single-module','cross-module','test-config') or c['source_kind'] not in ('real-project','synthetic'): raise ValueError('Invalid case classification')
         if not c['public_criteria'] or not c['private_criteria'] or not c['regression_criteria'] or any(x.get('kind')!='probe' for x in c['public_criteria']+c['private_criteria']+c['regression_criteria']): raise ValueError('Primary arms require equivalent independent probes')
@@ -54,7 +54,8 @@ def prepare(args):
         c['source_head']=subprocess.check_output(['git','-C',c['repo'],'rev-parse','HEAD'],text=True).strip()
         if subprocess.check_output(['git','-C',c['repo'],'status','--porcelain'],text=True).strip(): raise ValueError('Experiment cases must start clean')
         c['gold_sha256']=hashlib.sha256(Path(c['gold_patch']).read_bytes()).hexdigest()
-        info=json.loads(subprocess.check_output(['docker','image','inspect',c['image']],text=True))[0];c['image']=info['Id']
+        # Verification uses each case's own installed dependency folders (cStack 0.6 has no images).
+        if not isinstance(c['dependencies'],list) or not all(isinstance(d,str) and d and not d.startswith('/') and '..' not in d for d in c['dependencies']): raise ValueError('dependencies must list relative installed folders')
     runtimes={name:{'root':str(Path(path).resolve()),'digest':source_digest(path)} for name,path in [('old-cstack',args.old_runtime),('new-cstack',args.new_runtime)]}
     cli=subprocess.check_output([args.codex,'--version'],text=True).strip()
     manifest={'schema_version':1,'stage':args.stage,'cases':cases,'runtimes':runtimes,'model':'gpt-6.1-sol','reasoning':'medium','codex':args.codex,'codex_version':cli,'schedule':schedule(cases,1 if args.stage=='smoke' else 3),'limits':{'max_active_ms':600000,'max_attempts':2,'max_observed_tokens':500000},'token_scope':'Controlled worker and descendants; outer interactive planning chat excluded','generator_version':1,'smoke_gate':smoke_gate,'bridge_sha256':bridge_digest()}
