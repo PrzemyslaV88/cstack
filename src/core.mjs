@@ -10,6 +10,7 @@ import { resolveDependencies } from './environment.mjs';
 import { createRunner } from './sandbox.mjs';
 import { codexWorker, usageTotals } from './codex.mjs';
 import { workerFor } from './workers.mjs';
+import { runAlternates } from './alternates.mjs';
 import { verify, failurePacket, verifierIdentity } from './verification.mjs';
 import { codeMap, updateTasks, taskReady } from './graph.mjs';
 import { testPath, configPath } from './file-policy.mjs';
@@ -187,7 +188,7 @@ export async function processRun(input, { home = dataHome(), worker, signal, aft
   function stop(status, reason) { run.status = status; run.reason = reason; }
   async function measure(phase, operation) {
     run.journey ||= [];
-    const names={baseline_ms:'baseline_started',context_ms:'context_started',verification_ms:'verification_started',test_change_ms:'test_change_started',worker_ms:'worker_started'};
+    const names={baseline_ms:'baseline_started',context_ms:'context_started',verification_ms:'verification_started',test_change_ms:'test_change_started',alternates_ms:'alternates_started',worker_ms:'worker_started'};
     const name=names[phase]||phase;
     persist('phase',{phase:name});
     const index=run.journey.length;
@@ -241,7 +242,8 @@ export async function processRun(input, { home = dataHome(), worker, signal, aft
       if (run.contract.criteria.filter(c => c.required && task.criteria.includes(c.id)).every(c => c.kind === 'manual') && run.attempts.some(a => a.task_id === task.id)) {
         stop('NEEDS_MANUAL_VERIFICATION', 'Required manual acceptance is pending'); break;
       }
-      const used = run.attempts.filter(a => a.task_id === task.id).length, limits = run.contract.budget;
+      // Alternates are bounded by the run-wide budget and their own count, not the per-task correction limit.
+      const used = run.attempts.filter(a => a.task_id === task.id && !a.alternate).length, limits = run.contract.budget;
       if (used >= run.contract.attempt_limit) { stop('STALLED', `Attempt cap reached for ${task.id}; resumes retain all reservations`); break; }
       if (run.attempts.length >= limits.max_attempts || usageTotals(run.usage).observed_total_tokens >= limits.max_observed_tokens) {
         stop('BUDGET_EXHAUSTED', 'Run-wide attempt/observed-token admission ceiling reached'); break;
@@ -285,8 +287,14 @@ export async function processRun(input, { home = dataHome(), worker, signal, aft
       persist('attempt_evaluated', { id: attempt.id, decision: attempt.decision });
       if (afterAttempt) await afterAttempt(structuredClone(run)); // Test/observability callback, never an authority.
       if (verdict) { stop(...verdict); break; }
+      if (run.contract.alternates && !run.alternates_summary && !signal?.aborted && remaining() > 0) {
+        const { winner } = await measure('alternates_ms', () => runAlternates(run, { task, home, runner, worker, signal, remaining, persist, prompt: promptFor,
+          context: clone => clone.contract.schema_version === 3 ? buildContext(clone.worktree, clone.contract, { results: run.results, previous: null, thread: null, conventions: run.project_profile?.conventions || [] })
+            : codeMap(clone.worktree, clone.contract.goal, { maxFiles: 12, maxBytes: 40_000 }) }));
+        if (winner) { await examine(runner); run.status = 'READY'; continue; } // The adopted candidate faces every normal gate.
+      }
       if (attempt.after === attempt.before) { stop('STALLED', 'No candidate change and required behavior still fails'); break; }
-      const prior = run.attempts.filter(a => a.task_id === task.id && a.id !== attempt.id).at(-1);
+      const prior = run.attempts.filter(a => a.task_id === task.id && a.id !== attempt.id && !a.alternate).at(-1);
       if (prior?.failure_signature === attempt.failure_signature && attempt.passing <= prior.passing) {
         stop('STALLED', 'Repeated identical failure without measured progress. A new diagnosis is needed.'); break;
       }
