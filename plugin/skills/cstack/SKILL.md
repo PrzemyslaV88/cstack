@@ -8,7 +8,20 @@ controller as `CSTACK`. Read [references/contracts.md](references/contracts.md) 
 writing acceptance criteria. The controller's frozen contract, snapshots and
 current evidence determine completion.
 
-For a new repair:
+Fastest path for a new repair:
+
+- Run `node "$CSTACK" fix "GOAL" --repo "$REPO" --worker claude --format json` in
+  Claude Code (`--worker codex` in Codex). It sets up the project, lets the worker
+  draft probe checks only, and proves at least one fails on today's code.
+- Show the user the returned `cases` as a short table: input, expected, today. Ask
+  whether those expectations are right. Only after the user agrees, run
+  `node "$CSTACK" fix --approve FIX_ID --format json`. Never approve on their behalf
+  and never use `--yes` unless the user asked to skip the review.
+- Report the `outcome`. On `needs_you` at stage `checks`, the drafted checks did not
+  reproduce the problem: ask the user for the expected behavior or a checks file
+  (`--checks FILE`).
+
+Step by step, for full control:
 
 1. Use the user's requested project and observable outcome. Run `setup --repo`.
    It discovers the project's installed, git-ignored dependency folders

@@ -1,5 +1,5 @@
 import {resolve} from 'node:path';import {realpath} from 'node:fs/promises';import {requireThat} from './util.mjs';import {renderResult} from './cli-output.mjs';
-export const upgradeFlags={verify:['repo','checks','base','dependencies','goal','check','format'],setup:['repo','scope','dependencies','adapter','profile','format'],profile:['repo','profile','format'],plan:['repo','profile','acceptance','out','trace','source-mode','worker'],review:['out','format'],impact:['repo','file','since','depth','out','format'],runs:['repo','limit','format'],patch:['out'],apply:['repo','snapshot','check','format'],delivery:['delivery','format']};
+export const upgradeFlags={fix:['repo','worker','checks','yes','approve','format'],verify:['repo','checks','base','dependencies','goal','check','format'],setup:['repo','scope','dependencies','adapter','profile','format'],profile:['repo','profile','format'],plan:['repo','profile','acceptance','out','trace','source-mode','worker'],review:['out','format'],impact:['repo','file','since','depth','out','format'],runs:['repo','limit','format'],patch:['out'],apply:['repo','snapshot','check','format'],delivery:['delivery','format']};
 const out=(result,format)=>process.stdout.write(renderResult(result,format));
 function positionals(rest,count=0){requireThat(rest.length===count,'Unexpected or missing positional argument');}
 export async function withProgress(operation,format='markdown'){
@@ -10,7 +10,11 @@ export async function withProgress(operation,format='markdown'){
 export async function upgradeCommand(op,flags,rest){
  if(!Object.hasOwn(upgradeFlags,op)&&!(op==='run'&&flags.plan)&&!(op==='status'&&(flags.watch||flags.format)))return false;
  const format=flags.format||'markdown';requireThat(['markdown','json',...(['run','status'].includes(op)?['jsonl']:[])].includes(format),'Unsupported output format');
- if(op==='verify'){const mod=await import('./verify.mjs');let result;
+ if(op==='fix'){const mod=await import('./fix.mjs');let result;
+  if(flags.approve){positionals(rest);requireThat(!flags.checks&&!flags.yes&&!flags.worker,'fix --approve takes only the fix ID');result=await mod.fixApprove(String(flags.approve));}
+  else{requireThat(rest.length,'Describe the change: cstack fix "GOAL"');result=await mod.fixDraft({repo:flags.repo||'.',goal:rest.join(' '),worker:flags.worker||'codex',checks:flags.checks,yes:Boolean(flags.yes)});}
+  out(result,format);process.exitCode=mod.fixExitCodes[result.outcome]??2;}
+ else if(op==='verify'){const mod=await import('./verify.mjs');let result;
   if(flags.check){positionals(rest,1);requireThat(!flags.checks&&!flags.base&&!flags.dependencies&&!flags.goal,'verify --check takes a run ID and optional --repo');result=await mod.verifyCheck(rest[0],{repo:flags.repo});}
   else{positionals(rest);result=await mod.verifyChange({repo:flags.repo||'.',checks:flags.checks,base:flags.base||'HEAD',goal:flags.goal,dependencies:flags.dependencies===undefined?undefined:String(flags.dependencies).split(',').map(x=>x.trim()).filter(Boolean)});}
   out(result,format);process.exitCode=mod.exitCodes[result.outcome]??2;}

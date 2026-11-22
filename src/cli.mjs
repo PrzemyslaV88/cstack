@@ -17,6 +17,8 @@ const help = `cStack ${version} — single-worker repairs and read-only project 
 
 cstack map --repo /project [--focus relative/file.py] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack analyze-stack --repo /project [--trace /error.log] [--max-files 2000] [--format json|markdown] [--out /new/report]
+cstack fix \"GOAL\" --repo PATH [--worker codex|claude] [--checks FILE] [--yes]
+cstack fix --approve FIX_ID
 cstack verify --repo PATH --checks FILE [--base REV] [--dependencies node_modules,.venv] [--format json]
 cstack verify --check RUN_ID [--repo PATH]
 cstack setup --repo PATH [--dependencies node_modules,.venv] [--scope DIR] [--adapter pytest|vitest|node-test]
@@ -56,7 +58,7 @@ function options(args, op) {
     if (!args[i].startsWith('--')) { rest.push(args[i]); continue; }
     const key = args[i].slice(2); requireThat(known.has(key), 'Unknown option --' + key);
     requireThat(!Object.hasOwn(flags,key),'Repeated option --'+key);
-    if (['help','watch','check'].includes(key)) flags[key] = true;
+    if (['help','watch','check','yes'].includes(key)) flags[key] = true;
     else { requireThat(args[i + 1] && !args[i + 1].startsWith('--'), 'Missing value for --' + key); flags[key] = args[++i]; }
   }
   return { flags, rest };
