@@ -5,14 +5,17 @@ cStack is a local Codex plugin. Start with the [README](README.md), the
 
 ## Work locally
 
-Use Node.js 22.13+ and Git. Repair and isolation tests also require Docker with
-prepared images; benchmark tests require Python 3.12 and the pinned dependencies
-in [bench/requirements.lock](bench/requirements.lock). Project dependencies and
-images are prepared explicitly; see [benchmark setup](bench/README.md).
+Use Node.js 22.13+, Git and Python 3 with pytest 7–9. Repair and isolation tests run in
+the host sandbox (Linux user namespaces or macOS Seatbelt); no Docker is needed. Vitest
+adapter tests need an installed Vitest 4: run `npm ci` in
+`test/fixtures/environments/vitest` and set `CSTACK_TEST_VITEST_MODULES` to its
+`node_modules`. Tests whose toolchain is missing skip with the reason. Benchmark tests
+require Python 3.12 and the pinned dependencies in
+[bench/requirements.lock](bench/requirements.lock); see [benchmark setup](bench/README.md).
 
 ```sh
 npm run check
-CSTACK_TEST_RUNNER=docker npm test
+npm test
 # With the pinned Python benchmark environment active:
 python -m unittest discover -s bench -t . -p 'test_*.py' -v
 npm run plugin:build

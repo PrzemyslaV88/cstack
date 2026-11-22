@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "cstack",
-  "version": "0.5.0",
-  "description": "Map dependencies and change impact, prepare projects, and safely deliver independently checked coding repairs.",
+  "version": "0.6.0",
+  "description": "Map dependencies and change impact, verify any agent's change before it is called done, and safely deliver independently checked coding repairs.",
   "license": "MIT",
   "author": {
     "name": "cStack"

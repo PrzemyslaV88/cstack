@@ -1,5 +1,7 @@
 import { requireThat, integer, argv, safeId, exactKeys, relativePath } from './util.mjs';
 import { normalizeTestFixtures } from './file-policy.mjs';
+import { normalizeDependencies } from './environment.mjs';
+import { runnerBackend } from './sandbox.mjs';
 const validTypes = ['FIX', 'FEATURE', 'REFACTOR', 'INVESTIGATE'];
 function strings(value, name, nonempty = false) {
   requireThat(Array.isArray(value) && (!nonempty || value.length) && value.every(x => typeof x === 'string' && x.trim()) && new Set(value).size === value.length, `${name} must be an array of unique strings`);
@@ -14,7 +16,7 @@ function paths(value, name) {
 export function normalizeContract(raw) {
   requireThat(raw && typeof raw === 'object' && !Array.isArray(raw), 'Contract must be an object');
   const v3 = raw.schema_version === 3;
-  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'approved_test_fixtures', 'runner', 'budget', 'model', 'reasoning', ...(v3 ? ['project', 'source_mode', 'context'] : [])]);
+  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'approved_test_fixtures', 'runner', 'budget', 'model', 'reasoning', ...(v3 ? ['project', 'source_mode', 'context', 'test_change_policy'] : [])]);
   for (const key of Object.keys(raw)) requireThat(allowed.has(key), `Unknown contract property: ${key}`);
   requireThat(raw.schema_version === undefined || [2,3].includes(raw.schema_version), 'Use schema_version 2 or 3; v1 evidence cannot be promoted');
   if (v3) {
@@ -22,6 +24,7 @@ export function normalizeContract(raw) {
     requireThat(raw.draft === undefined || typeof raw.draft === 'boolean', 'draft must be boolean');
     requireThat(raw.model === undefined || typeof raw.model === 'string' && /^[A-Za-z0-9._/-]{1,128}$/.test(raw.model), 'Invalid model');
     requireThat(raw.source_mode === undefined || ['clean','working-copy'].includes(raw.source_mode), 'Invalid source mode');
+    requireThat(raw.test_change_policy === undefined || ['review','additive'].includes(raw.test_change_policy), 'test_change_policy must be review or additive');
   }
   requireThat(!raw.draft, 'Review the draft contract and set draft=false before execution');
   requireThat(raw.reasoning === undefined || ['low', 'medium', 'high'].includes(raw.reasoning), 'Unknown reasoning effort');
@@ -118,10 +121,18 @@ export function normalizeContract(raw) {
   for (const task of normalizedTasks) visit(task.id);
   for (const task of normalizedTasks) requireThat(task.criteria.some(id => criteria.some(c => c.id === id && c.required)), `Task ${task.id} needs a required outcome; do not create edit-only nodes`);
   requireThat(new Set(normalizedTasks.flatMap(t => t.criteria)).size === criteria.length, 'Every criterion must be assigned to a task');
-  const runner = raw.runner || { backend: 'docker' };
-  if (v3) exactKeys(runner, ['backend','image'], 'runner');
-  requireThat(runner && ['docker', 'linux'].includes(runner.backend), 'runner.backend must be docker or linux; no host execution');
-  requireThat(!runner.image || (typeof runner.image === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/.test(runner.image)), 'Invalid runner image');
+  // Schema 2's historical default is kept for hash stability; it is refused when run.
+  const runner = raw.runner || { backend: v3 ? 'host' : 'docker' };
+  requireThat(runner && typeof runner === 'object' && !Array.isArray(runner), 'runner must be an object');
+  if (v3) { runnerBackend(runner); exactKeys(runner, ['backend','dependencies'], 'runner'); } // Rejects Docker with a migration message.
+  else {
+    // Schema 2 normalizes exactly as before so frozen contracts keep their hashes; a Docker
+    // backend is refused only when a runner is created.
+    exactKeys(runner, ['backend','image','dependencies'], 'runner');
+    requireThat(['docker', 'linux', 'host'].includes(runner.backend), 'runner.backend must be host; no unsandboxed fallback');
+    requireThat(!runner.image || (typeof runner.image === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/.test(runner.image)), 'Invalid runner image');
+  }
+  const dependencies = normalizeDependencies(runner.dependencies || []);
   const workspaceInputs = raw.workspace_inputs || [];
   requireThat(Array.isArray(workspaceInputs) && workspaceInputs.length <= 8, 'workspace_inputs must be a bounded array');
   const inputDestinations = new Set();
@@ -140,13 +151,13 @@ export function normalizeContract(raw) {
     implementation_paths: paths(raw.implementation_paths || [], 'implementation_paths'),
     workspace_inputs: workspaceInputs.map(x => ({ source: x.source, destination: x.destination, digest: x.digest })),
     approved_test_fixtures: normalizeTestFixtures(raw.approved_test_fixtures),
-    runner: { backend: runner.backend, ...(runner.image ? { image: runner.image } : {}) },
+    runner: v3 ? { backend: runner.backend, dependencies } : { backend: runner.backend, ...(runner.image ? { image: runner.image } : {}), ...(dependencies.length ? { dependencies } : {}) },
     budget: { max_attempts: integer(b.max_attempts, Math.min(12, attemptLimit * tasks.length), 1, 100, 'max_attempts'),
       max_active_ms: integer(b.max_active_ms, 1_800_000, 100, 86_400_000, 'max_active_ms'),
       worker_timeout_ms: integer(b.worker_timeout_ms, 600_000, 100, 3_600_000, 'worker_timeout_ms'),
       max_observed_tokens: integer(b.max_observed_tokens, 500_000, 1, 100_000_000, 'max_observed_tokens') },
     ...(raw.model ? { model: String(raw.model) } : {}), reasoning: ['low', 'medium', 'high'].includes(raw.reasoning) ? raw.reasoning : 'medium',
-    ...(v3 ? { source_mode: raw.source_mode || 'clean', context: normalizeContext(raw.context), ...(raw.project ? {project: normalizeProject(raw.project)} : {}) } : {}) };
+    ...(v3 ? { source_mode: raw.source_mode || 'clean', test_change_policy: raw.test_change_policy || 'additive', context: normalizeContext(raw.context), ...(raw.project ? {project: normalizeProject(raw.project)} : {}) } : {}) };
 }
 function normalizeProject(value) {
   exactKeys(value, ['profile_digest','environment_digest'], 'project');
@@ -155,7 +166,7 @@ function normalizeProject(value) {
 }
 function normalizeContext(value = {}) {
   exactKeys(value, ['policy','files','symbols','frames'], 'context');
-  const policy = value.policy || 'evidence-v1'; requireThat(['evidence-v1','filename-v1'].includes(policy), 'Invalid context policy');
+  const policy = value.policy || 'evidence-v1'; requireThat(['evidence-v1','filename-v1','none'].includes(policy), 'Invalid context policy');
   const files = strings(value.files || [], 'context files').map(p => relativePath(p));
   const symbols = strings(value.symbols || [], 'context symbols');
   const frames = value.frames || [];

@@ -133,23 +133,18 @@
       "type": "object",
       "properties": {
         "mode": {
-          "enum": [
-            "existing-image",
-            "npm-lock",
-            "pip-hashes",
-            "manual"
-          ]
+          "const": "host"
         },
-        "image": {
-          "anyOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._/:@-]*$"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.{1,2}|\\.git)(?:/|$))(?!.*[\\\\\\u0000\\r\\n\\t])(?!.*//)(?!.*\\/$).+$"
+          },
+          "maxItems": 8,
+          "uniqueItems": true
         },
         "lockfiles": {
           "type": "array",
@@ -165,7 +160,7 @@
       },
       "required": [
         "mode",
-        "image",
+        "dependencies",
         "lockfiles"
       ],
       "additionalProperties": false

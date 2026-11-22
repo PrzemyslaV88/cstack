@@ -17,10 +17,10 @@ const help = `cStack ${version} — single-worker repairs and read-only project 
 
 cstack map --repo /project [--focus relative/file.py] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack analyze-stack --repo /project [--trace /error.log] [--max-files 2000] [--format json|markdown] [--out /new/report]
-cstack setup --repo PATH [--image IMAGE] [--scope DIR] [--adapter pytest|vitest|node-test]
+cstack verify --repo PATH --checks FILE [--base REV] [--dependencies node_modules,.venv] [--format json]
+cstack verify --check RUN_ID [--repo PATH]
+cstack setup --repo PATH [--dependencies node_modules,.venv] [--scope DIR] [--adapter pytest|vitest|node-test]
 cstack profile show|validate --repo PATH [--profile FILE]
-cstack env plan --repo PATH --profile FILE --out DIR [--recipe npm-lock|pip-hashes] [--base-image IMAGE]
-cstack env prepare --plan FILE --expect-plan SHA256
 cstack plan \"GOAL\" --repo PATH --profile FILE --acceptance FILE --out DIR
 cstack run --plan FILE --expect-plan SHA256 [--format markdown|json|jsonl]
 cstack review RUN_ID [--out DIR] [--format markdown|json]
@@ -29,8 +29,8 @@ cstack runs [--repo PATH] [--limit 20]
 cstack patch RUN_ID --out DIR
 cstack apply RUN_ID --repo PATH --snapshot SHA256 [--check]
 cstack delivery recover RUN_ID --delivery ID
-cstack doctor [--runner docker|linux] [--image IMAGE]
-cstack init "Observable goal" --out /outside/repo/contract.json [--runner docker|linux]
+cstack doctor [--profile FILE --repo PATH]
+cstack init "Observable goal" --out /outside/repo/contract.json
 cstack validate --contract /path/contract.json
 cstack input-digest /absolute/dependency-bundle
 cstack run ["Goal matching contract"] --repo /path/repo --contract /path/contract.json
@@ -41,11 +41,14 @@ cstack approve RUN_ID --criterion AC1|change-review|outcome --snapshot SHA256 --
 cstack report RUN_ID
 cstack export RUN_ID --out /new/export/directory
 
-Defaults: Docker verification, no network, no host fallback, ChatGPT Codex auth only.
-Linux namespaces are an explicitly selected alternative. Native Windows: use WSL2.
+Verification uses the project's own installed dependencies inside an OS sandbox
+(Linux namespaces or macOS Seatbelt): offline, read-only candidate, self-tested.
+No images, no installs, no unsandboxed fallback. ChatGPT Codex auth by default;
+CSTACK_CODEX_AUTH=api-key explicitly selects Codex's stored API-key login (billed). Windows: use WSL2.
+verify checks a change already in the working copy without a model: exit 0 done, 2 failed, 3 needs you.
 Contracts are frozen. Resume never increases budgets. No automatic push/deployment.
 `;
-const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['runner','image','profile','repo'], init:['out','runner'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags};
+const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['profile','repo'], init:['out'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags};
 function options(args, op) {
   const flags = {}, rest = [];
   const known = new Set(['help', ...(commandFlags[op] || [])]);
@@ -81,7 +84,7 @@ async function main() {
   if (op === 'input-digest') { requireThat(rest[0], 'Bundle directory is required'); console.log(hash(json(await manifest(resolve(rest[0]))))); return; }
   if (op === 'init') {
     requireThat(rest.length && flags.out, 'Specify an observable goal and --out outside the target repository');
-    const draft = { schema_version: 2, draft: true, type: 'FIX', goal: rest.join(' '), policy: 'lean', runner: { backend: flags.runner || 'docker' },
+    const draft = { schema_version: 2, draft: true, type: 'FIX', goal: rest.join(' '), policy: 'lean', runner: { backend: 'host', dependencies: [] },
       criteria: [{ id: 'AC1', kind: 'manual', text: 'Replace this with the specific outcome and an external probe or deliberate human check.' }] };
     await writeFile(resolve(flags.out), json(draft), { flag: 'wx', mode: 0o600 });
     console.log('Draft created: ' + resolve(flags.out) + '\nReview criteria, add observable probes, then set draft=false. Drafts cannot execute.'); return;
@@ -92,18 +95,18 @@ async function main() {
     const temp = await mkdtemp(join(tmpdir(), 'cstack-doctor-'));
     try {
       try {
-        const runner = await createRunner({ backend: flags.runner || 'docker', image: flags.image });
+        const runner = await createRunner({ backend: 'host' });
         const health = await runner.execute(['/bin/sh', '-c', 'printf cstack-isolated'], { cwd: temp, timeoutMs: 5000 });
         requireThat(health.code === 0 && health.stdout === 'cstack-isolated', health.stderr || 'Isolation probe failed');
-        report.verification = { ready: true, backend: runner.backend, identity: runner.identity };
+        report.verification = { ready: true, backend: runner.backend, sandbox: runner.sandbox, identity: runner.identity, self_test: 'passed' };
       } catch (e) { report.verification = { ready: false, reason: e.message }; }
       try { report.codex = { ready: true, ...(await preflightCodex()) }; } catch (e) { report.codex = { ready: false, reason: e.message }; }
       report.worker_ready=report.codex.ready;
-      if(flags.profile){const {readJson}=await import('./artifacts.mjs');const {checkEnvironment}=await import('./environment-plan.mjs');const {collectProjectTests}=await import('./setup.mjs');try{const p=await readJson(flags.profile);const {validateProfile}=await import('./project-profile.mjs');await validateProfile(p,await repository(flags.repo||'.'));const env=await checkEnvironment(p,{cwd:resolve(flags.repo||'.')});const r=await createRunner({image:env.image_id});await collectProjectTests(p,r,resolve(flags.repo||'.'));report.project_verifier_ready=true;}catch(e){report.project_verifier_ready=false;report.project_reason=e.message;}}
+      if(flags.profile){const {readJson}=await import('./artifacts.mjs');const {checkEnvironment}=await import('./environment-plan.mjs');const {collectProjectTests}=await import('./setup.mjs');try{const p=await readJson(flags.profile);const {validateProfile}=await import('./project-profile.mjs');await validateProfile(p,await repository(flags.repo||'.'));const env=await checkEnvironment(p,{cwd:resolve(flags.repo||'.')});await collectProjectTests(p,env.runner,resolve(flags.repo||'.'));report.project_verifier_ready=true;}catch(e){report.project_verifier_ready=false;report.project_reason=e.message;}}
       console.log(json(report)); if (!report.verification.ready || !report.codex.ready) process.exitCode = 2;
     } finally { await rm(temp, { recursive: true, force: true }); } return;
   }
-  const {beginRun,loadRun,normalizeContract,effectiveStatus,writeReport,approveRun,exportCandidate,reviewDetails}=await import('./core.mjs');
+  const {beginRun,loadRun,normalizeContract,effectiveStatus,writeReport,approveRun,exportCandidate,reviewDetails,outcomeOf}=await import('./core.mjs');
   const {usageTotals}=await import('./codex.mjs');
   if (op === 'validate' || op === 'run') {
     requireThat(flags.contract&&!flags['expect-plan'], '--contract is required; --expect-plan belongs to --plan'); const c = normalizeContract(JSON.parse(await readFile(resolve(flags.contract), 'utf8')));
@@ -114,7 +117,8 @@ async function main() {
   }
   requireThat(rest[0], 'Run ID required'); const run = await loadRun(rest[0]);
   if (op === 'status') {
-    console.log(json({ id: run.id, status: await effectiveStatus(run), goal: run.contract.goal, candidate: run.snapshot?.source_digest,
+    const status = await effectiveStatus(run);
+    console.log(json({ id: run.id, outcome: outcomeOf(status), status, goal: run.contract.goal, candidate: run.snapshot?.source_digest,
       attempts: run.attempts.length, tasks: run.tasks, usage: usageTotals(run.usage), allowance_remaining: 'unknown', reason: run.reason, worktree: run.worktree,
       checks_for_snapshot: reviewDetails(run), metrics: run.metrics || {} })); return;
   }
@@ -132,14 +136,14 @@ async function main() {
   throw new Error('Unknown command: ' + op);
 }
 async function execute(run) {
-  const {processRun,effectiveStatus,reviewDetails}=await import('./core.mjs');
+  const {processRun,effectiveStatus,reviewDetails,outcomeOf}=await import('./core.mjs');
   const abort = new AbortController(), cancel = () => abort.abort(); process.once('SIGINT', cancel); process.once('SIGTERM', cancel);
   try {
     const result = await processRun(run, { signal: abort.signal, onEvent: e => {
       if (['attempt_reserved', 'worker_finished', 'verified_candidate', 'run_stopped'].includes(e.kind)) console.error(`${e.kind}: ${e.status}; reserved attempts ${e.attempts}`);
     } });
     const status = await effectiveStatus(result);
-    console.log(json({ id: result.id, status, reason: result.reason, checks_for_snapshot: reviewDetails(result), report: join(dataHome(), 'runs', result.id, 'report.md') }));
+    console.log(json({ id: result.id, outcome: outcomeOf(status), status, reason: result.reason, checks_for_snapshot: reviewDetails(result), report: join(dataHome(), 'runs', result.id, 'report.md') }));
     if (!['VERIFIED', 'INVESTIGATED'].includes(status)) process.exitCode = 2;
   } finally { process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel); }
 }

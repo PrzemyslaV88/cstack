@@ -1,5 +1,8 @@
-"""Controller-owned pytest 8.3.5 protocol. Candidate code runs only in scratch."""
-import os, sys, json, pathlib, shutil, hashlib
+"""Controller-owned pytest 7-9 protocol. Candidate code runs only in a scratch copy.
+
+The project's own interpreter and installed pytest are used (for example from a linked
+virtual environment). Links, including dependency links, are copied as links."""
+import os, sys, json, pathlib, shutil, hashlib, tempfile
 PREFIX = 'CSTACK_TEST_EVENT '
 def emit(kind, **values):
     print(PREFIX + json.dumps(dict(schema_version=1, kind=kind, **values), ensure_ascii=True), flush=True)
@@ -14,9 +17,10 @@ def inventory(root):
             result.append([name, 'file', hashlib.sha256(p.read_bytes()).hexdigest(), bool(p.stat().st_mode & 0o111)])
     return hashlib.sha256(json.dumps(result, separators=(',', ':')).encode()).hexdigest()
 def main():
-    spec = json.loads(sys.argv[1]); source = '/candidate'; dest = '/tmp/project'
+    spec = json.loads(sys.argv[1]); source = os.environ.get('CSTACK_CANDIDATE') or os.getcwd()
+    scratch = os.environ.get('CSTACK_SCRATCH') or tempfile.gettempdir()
+    dest = os.path.join(tempfile.mkdtemp(prefix='stage-', dir=scratch), 'project')
     before = inventory(source)
-    if os.path.lexists(source + '/node_modules'): raise RuntimeError('DEPENDENCY_PATH_COLLISION')
     shutil.copytree(source, dest, symlinks=True)
     after = inventory(dest)
     if before != after: raise RuntimeError('STAGING_INTEGRITY')
@@ -24,7 +28,7 @@ def main():
     os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     os.environ.pop('PYTEST_ADDOPTS', None); os.environ.pop('PYTEST_PLUGINS', None)
     import pytest
-    if pytest.__version__ != '8.3.5': raise RuntimeError('TEST_RUNNER_VERSION_UNSUPPORTED')
+    if pytest.__version__.split('.')[0] not in ('7', '8', '9'): raise RuntimeError('TEST_RUNNER_VERSION_UNSUPPORTED: pytest 7-9 is supported, found ' + pytest.__version__)
     class Reporter:
         def __init__(self): self.ids=[]; self.reports={}; self.errors=[]
         def pytest_collection_finish(self, session): self.ids=[i.nodeid for i in session.items]

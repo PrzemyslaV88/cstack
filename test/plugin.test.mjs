@@ -49,7 +49,7 @@ test('relocated analysis skills map Python and identify stack declarations witho
   await writeFile(join(project, 'app.py'), 'from helper import value\n');
   await writeFile(join(project, 'helper.py'), 'value=1\n');
   await writeFile(join(project, 'pyproject.toml'), '[project]\ndependencies=["flask>=2"]\n');
-  const env = { PATH: '/usr/bin:/bin', CSTACK_CODEX_BIN: '/nonexistent/codex', DOCKER_HOST: 'unix:///nonexistent/docker.sock' };
+  const env = { PATH: '/usr/bin:/bin', CSTACK_CODEX_BIN: '/nonexistent/codex' };
   const graph = await command([process.execPath, join(moved, 'skills/graph-map/scripts/map.mjs'), '--repo', project, '--format', 'json'], { cwd: root, env });
   assert.equal(graph.code, 0, graph.stderr);
   assert.ok(JSON.parse(graph.stdout).edges.some(e => e.from === 'app.py' && e.to === 'helper.py'));
@@ -57,4 +57,22 @@ test('relocated analysis skills map Python and identify stack declarations witho
   assert.equal(stack.code, 0, stack.stderr);
   assert.equal(JSON.parse(stack.stdout).status, 'ANALYZED');
   assert.ok(JSON.parse(await readFile(join(root, 'stack-report/stack.json'), 'utf8')).findings.some(f => f.name === 'Flask'));
+});
+
+test('VERIFY-13: the relocated verify skill gates an existing change without the source checkout or Codex', async t => {
+  const { fixture } = await import('./helpers/fixture.mjs'), { cleanEnv } = await import('../src/process.mjs');
+  const root = await temporary(t), built = await buildPlugin({ output: join(root, 'marketplace') });
+  const moved = join(root, 'relocated with spaces'); await cp(built.pluginRoot, moved, { recursive: true });
+  const f = await fixture(t), checks = join(f.root, 'checks.json');
+  await writeFile(checks, JSON.stringify({ criteria: [contract().criteria[0]] }));
+  const verify = join(moved, 'skills/verify/scripts/verify.mjs');
+  const env = cleanEnv({ CSTACK_HOME: f.home, CSTACK_CODEX_BIN: '/nonexistent/codex' });
+  const run = args => command([process.execPath, verify, ...args, '--format', 'json'], { cwd: root, env, timeoutMs: 120000 });
+  const broken = await run(['--repo', f.repo, '--checks', checks]);
+  assert.equal(broken.code, 2, broken.stderr); assert.equal(JSON.parse(broken.stdout).outcome, 'failed');
+  await writeFile(join(f.repo, 'calc.mjs'), 'export const add=(a,b)=>a+b;\n');
+  const done = await run(['--repo', f.repo, '--checks', checks]);
+  assert.equal(done.code, 0, done.stderr + done.stdout); const body = JSON.parse(done.stdout);
+  assert.equal(body.outcome, 'done'); assert.equal(body.model_invoked, false);
+  assert.ok(body.report.startsWith(f.home));
 });

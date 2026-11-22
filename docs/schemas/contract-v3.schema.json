@@ -352,16 +352,24 @@
     },
     "runner": {
       "type": "object",
+      "description": "Isolated host runner: the project's own installed dependencies inside an OS sandbox. Docker was removed in cStack 0.6.",
       "properties": {
         "backend": {
           "enum": [
-            "docker",
+            "host",
             "linux"
           ]
         },
-        "image": {
-          "type": "string",
-          "minLength": 1
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.{1,2}|\\.git)(?:/|$))(?!.*[\\\\\\u0000\\r\\n\\t])(?!.*//)(?!.*\\/$).+$"
+          },
+          "maxItems": 8,
+          "uniqueItems": true
         }
       },
       "required": [
@@ -504,7 +512,8 @@
         "policy": {
           "enum": [
             "evidence-v1",
-            "filename-v1"
+            "filename-v1",
+            "none"
           ]
         },
         "files": {
@@ -555,6 +564,14 @@
       },
       "required": [],
       "additionalProperties": false
+    },
+    "test_change_policy": {
+      "enum": [
+        "review",
+        "additive"
+      ],
+      "default": "additive",
+      "description": "additive: existing Python test modules that only gain tests need no change review when every required check also passes with the original test files. review: every existing test/configuration change needs human review."
     }
   },
   "required": [

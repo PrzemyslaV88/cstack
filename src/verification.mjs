@@ -6,7 +6,7 @@ import { hash, json, redact, requireThat } from './util.mjs';
 import {executeTestSuite} from './test-adapters.mjs';
 import { manifest, fingerprint } from './snapshot.mjs';
 export const verifierIdentity = async () => hash((await Promise.all(
-  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs', './test-adapters.mjs', './runners/pytest-wrapper.py', './runners/vitest-wrapper.mjs', './runners/stage-project.mjs', './sandbox.mjs', './process.mjs', './runners/guardian.mjs', './runners/linux.sh']
+  ['./verification.mjs', './snapshot.mjs', './file-policy.mjs', './runners/node-reporter.mjs', './test-adapters.mjs', './runners/pytest-wrapper.py', './runners/vitest-wrapper.mjs', './runners/stage-project.mjs', './sandbox.mjs', './process.mjs', './runners/guardian.mjs', './runners/linux.sh', './test-changes.mjs', './runners/test-changes.py']
     .map(p => readFile(fileURLToPath(new URL(p, import.meta.url)))))).map(b => hash(b)).join(':'));
 export function parseTestReport(stdout, expected) {
   let events;
@@ -65,7 +65,7 @@ export async function verify(run, snapshot, runner, { home, signal, deadline = I
       const result=await executeTestSuite(c,runner,{cwd:snapshot.path,timeoutMs:Math.max(1,Math.min(c.timeout_ms,deadline-Date.now())),signal});
       outputs.push(result.stdout+'\n---stderr---\n'+result.stderr);details.push(result.parsed);pass=result.parsed.passed;error=result.parsed.error;
     } else {
-      const args = [c.argv[0], '--test-reporter=/runner/node-reporter.mjs', ...c.argv.slice(1)];
+      const args = [c.argv[0], '--test-reporter=' + runner.runnerPath('node-reporter.mjs'), ...c.argv.slice(1)];
       const result = await execute(args);
       const parsed = parseTestReport(result.stdout, c.expected_tests);
       outputs.push(result.stdout + '\n---stderr---\n' + result.stderr); details.push(parsed);

@@ -1,7 +1,8 @@
 # cStack for Codex
 
-cStack 0.5.0 is packaged as a local Codex plugin. It includes the controller runtime
-and four skills. Repairs use the existing ChatGPT Codex sign-in, Git and Docker;
+cStack 0.6.0 is packaged as a local Codex plugin. It includes the controller runtime
+and five skills. Repairs use the existing ChatGPT Codex sign-in, Git and the project's
+own installed dependencies inside an OS sandbox (no Docker);
 there is no separate service or automatic API-key billing fallback.
 
 ## Use it
@@ -36,12 +37,10 @@ review stays explicit. The skill never invents a human approval.
 
 Clean source is the default. Explicit `plan --source-mode working-copy` captures
 existing edits and preserves staging; see [working-copy support](REVIEW_AND_DELIVERY.md#start-with-existing-edits-in-05). Node 22.13+, an authenticated
-Codex CLI and a functioning Docker engine with the selected runtime image are
-required. Installation does not automatically install dependencies or images.
-
-Select your available Docker engine. If you use a named context, set
-`DOCKER_CONTEXT=YOUR_CONTEXT` for cStack commands; this does not change the
-global Docker context. The plugin's doctor command checks the chosen setup.
+Codex CLI and the project's dependencies, installed by you in git-ignored folders,
+are required. Installation never installs dependencies. The plugin's doctor command
+runs the sandbox self-test and, with `--profile`, checks the project environment.
+See [project setup](SETUP.md).
 
 ## Build and install
 
@@ -156,8 +155,8 @@ install an upgrade into your normal profile; installation remains an explicit ac
 
 ## Version 0.5 upgrade
 
-The bundle exposes four skills: `cstack:cstack`, `cstack:graph-map`,
-`cstack:stack-analysis`, and `cstack:impact-analysis`. Repair helpers include setup,
+The bundle exposes five skills: `cstack:cstack`, `cstack:graph-map`,
+`cstack:stack-analysis`, `cstack:impact-analysis` and `cstack:verify` ([verify a change](VERIFY.md)). Repair helpers include setup,
 profiles, frozen plans, progress, private HTML review and journaled apply/recovery.
 Working-copy mode is explicit and preserves existing staging; clean remains default.
 

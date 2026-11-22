@@ -109,7 +109,14 @@ test('network access is denied inside the candidate runner', async t => {
   assert.equal(result.code, 0); assert.match(result.stdout, /blocked/); assert.doesNotMatch(result.stdout, /ESCAPED/);
 });
 test('unsupported runner cannot fall back to unrestricted execution', async () => {
-  await assert.rejects(createRunner({ backend: 'host' }), /no host fallback/);
+  for (const backend of ['unsandboxed', 'none', 'local']) await assert.rejects(createRunner({ backend }), /no unsandboxed fallback/);
+  await assert.rejects(createRunner({ backend: 'docker', image: 'node:22' }), { code: 'CAPABILITY', message: /Docker verification was removed/ });
+});
+test('a runner that executes without a sandbox fails the isolation self-test', async () => {
+  const { isolationSelfTest } = await import('../src/sandbox.mjs');
+  const { command } = await import('../src/process.mjs');
+  const unsandboxed = { identity: 'unsandboxed-' + Date.now(), execute: (args, options) => command(args, options) };
+  await assert.rejects(isolationSelfTest(unsandboxed), { code: 'ISOLATION', message: /candidate was writable/ });
 });
 test('external symlinks cannot enter sealed candidates', async t => {
   const f = await fixture(t); const run = await beginRun({ ...f, contract: contract() });
