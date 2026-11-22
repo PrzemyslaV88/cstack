@@ -98,9 +98,15 @@ skips, xfail, xpass, todo and missing expected IDs do not satisfy acceptance.
 Malformed/incomplete streams are errors. Reported tests remain supporting proof;
 an external probe or actual human outcome review is still needed.
 
+## Workers and alternates (schema 3)
+
+`worker` is `codex` (default; contracts frozen before the field keep Codex) or `claude`. Both run one agent in the private worktree with no subagents, web tools, MCP servers, hooks or user/project settings, and no network for shell commands. Claude Code runs as `claude -p --restricted --strict-mcp-config` with tools limited to Bash, Read, Edit, Write, Glob and Grep, edits accepted only inside the worktree, other permission prompts denied, and its bash sandbox enabled with no allowed domains and `failIfUnavailable`. Plans freeze the worker and use its own default model unless one is given.
+
+`alternates: {"count": 1-3, "workers": ["codex", "claude"]}` starts up to `count` independent attempts in parallel after the first failed attempt, each in its own worktree from the initial snapshot, rotating across the listed workers. Each is sealed and checked by the verifier; the smallest change that passes every required check is copied into the run's worktree, where it faces every normal gate. Alternates count against `budget.max_attempts`, whose default grows by `count`.
+
 ## Worker authentication
 
-The Codex worker uses the ChatGPT sign-in by default. `CSTACK_CODEX_AUTH=api-key` explicitly selects an API key that was stored with Codex's own login command; preflight confirms Codex reports an API-key login and refuses otherwise. cStack never reads, stores or forwards keys, never switches modes on its own, and records the selected mode in the report.
+The Codex worker uses the ChatGPT sign-in by default. `CSTACK_CODEX_AUTH=api-key` explicitly selects an API key that was stored with Codex's own login command. The Claude Code worker uses the subscription login (`claude auth login`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` on headless machines); `CSTACK_CLAUDE_AUTH=api-key` explicitly selects an API key stored by Claude Code itself, and `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` never reach the worker. In both cases preflight confirms the CLI reports the selected login type and refuses otherwise. cStack never reads, stores or forwards keys, never switches modes on its own, and records the selected mode in the report.
 
 See [published schemas](schemas/contract-v3.schema.json) and [setup](SETUP.md).
 Semantic checks additionally enforce content identities, existing inputs, frozen

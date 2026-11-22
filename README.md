@@ -10,77 +10,78 @@
 </p>
 
 <p align="center">
-  <strong>Four Codex skills for understanding projects and delivering independently checked repairs.</strong><br>
-  Local tools. Focused context. Evidence you can review.
+  <strong>Proof that "done" means done, for Claude Code, Codex and any agent workflow.</strong><br>
+  Frozen checks. Run by cStack, not the agent. Offline, sandboxed, bound to the exact files.
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
-  <a href="#four-skills-one-plugin">Skills</a> ·
-  <a href="#benchmarks">Benchmarks</a> ·
+  <a href="#see-it-in-30-seconds">Demo</a> ·
+  <a href="#five-skills-one-plugin">Skills</a> ·
   <a href="#how-it-works">How it works</a> ·
+  <a href="#measuring-false-completions">Benchmark</a> ·
   <a href="#documentation">Documentation</a>
 </p>
 
 ---
 
-cStack helps you understand an unfamiliar project, make a focused fix, and inspect the result. Its repair workflow gives one Codex worker a separate Git worktree, then checks the candidate against concrete expected behavior. Completion is backed by recorded checks and explicit review gates.
+Coding agents say "done" when the build is green, when they think they are finished, or when they have quietly edited the tests. cStack moves that decision out of the agent. It runs acceptance checks itself, first on your current code (they must fail, proving they detect the problem) and then on the change, in an offline OS sandbox with your project's own installed dependencies. A change that does nothing, only touches tests, rewrites its own checks or fails a check is not done, whatever the agent says.
 
-## From project discovery to a checked change
+## What you can do with it
 
-- **Prepare once:** a private project profile that points at the dependencies you already installed, and a baseline that reproduces the requested problem. No images, no installs.
-- **Find relevant code:** error locations, exact symbols, failing tests, and import relationships select bounded repair context.
-- **Inspect the result:** scoped stack reports, change-impact maps, and private HTML review reports explain evidence and pending review.
-- **Deliver carefully:** preview a binary-capable patch, apply without changing staging, and recover interrupted delivery without overwriting a concurrent edit.
-
-[Set up a project](docs/SETUP.md) · [Review and delivery](docs/REVIEW_AND_DELIVERY.md) · [Change impact](docs/IMPACT.md)
-
-## Less overhead. The same five bugs fixed.
-
-<table>
-  <tr>
-    <td align="center" width="33%"><h3>5 / 5</h3>Private bug-test passes<br>in each cStack mode</td>
-    <td align="center" width="33%"><h3>57.7% fewer tokens</h3>Single-agent cStack<br>compared with pstack single-agent</td>
-    <td align="center" width="33%"><h3>57.4% fewer tokens</h3>Multi-agent cStack<br>compared with pstack multi-agent</td>
-  </tr>
-</table>
-
-**cStack 0.5 completed the five selected bug fixes with less task time and fewer tokens than the recorded pstack workflows.** The comparison uses pstack skills adapted to Codex, with real helpers in multi-agent mode. One trial per workflow per bug; execution dates and workflow settings differ. These results describe this benchmark, not a general quality ranking or a billing estimate. **Plain Codex with no workflow also passed all five**, with 5% more tokens than single-agent cStack but 17% less task time; on these tasks there were no false completions for cStack to catch. [Results and methodology →](#benchmarks)
+- **Gate any agent's work:** `cstack verify` checks a change already in your working copy, made by Claude Code, Codex, Cursor, pstack or a person. No model is called. Re-check right before commit or merge with `verify --check`. [Verify a change →](docs/VERIFY.md)
+- **Fix a bug in one command:** `cstack fix "GOAL"` drafts small probe checks, proves they fail on today's code, shows you the expected behavior to approve, then fixes against exactly those checks with a Claude Code or Codex worker.
+- **Try several fixes when one fails:** optional alternates run in parallel, even across vendors, and the smallest change that passes every check wins. Evidence decides, not another model.
+- **Understand a project first:** dependency maps, stack inventories and change impact without a model.
 
 ## Quick start
 
-Install from the repository using a Codex CLI with native plugin support:
+**Claude Code** (2.1.275 or newer):
+
+```text
+/plugin install cstack --marketplace PrzemyslaV88/cstack
+```
+
+Or in two steps: `/plugin marketplace add PrzemyslaV88/cstack`, then `/plugin install cstack@cstack`. Start a new session and use `/cstack:verify`, `/cstack:cstack`, `/cstack:graph-map`, `/cstack:stack-analysis` or `/cstack:impact-analysis`. While the plugin is enabled, `cstack` is also on the PATH of Claude's Bash tool.
+
+**Codex:**
 
 ```sh
-git clone https://github.com/PrzemyslaV88/cstack.git
-cd cstack
+git clone https://github.com/PrzemyslaV88/cstack.git && cd cstack
 npm run plugin:install
 ```
 
-The installer builds the bundled runtime, registers a local marketplace, and enables `cstack@cstack-local`. There is no hosted cStack service or runtime npm dependency installation.
+Open a new Codex chat in your project and use `$cstack:verify`, `$cstack:cstack` and the analysis skills.
 
-Open a **new Codex chat** in your project and choose a skill. Restart Codex if the new skills are not visible.
-
-```text
-$cstack:graph-map Map this project and explain its main dependencies.
-```
-
-```text
-$cstack:stack-analysis Explain the languages, frameworks and build/test tools in this project.
-$cstack:impact-analysis Show likely consumers and tests affected by src/engine.py.
-```
-
-```text
-$cstack:cstack Fix this bug and independently check that the fix works.
-```
+**Command line only:** clone the repository and run `node src/cli.mjs` (Node 22.13+). `npm run plugin:install:claude` installs a local build into Claude Code instead of the GitHub marketplace.
 
 ```text
 $cstack:verify Check my change against .cstack/checks.json before I call it done.
+$cstack:cstack Fix the discount bug: orders over 100 should get 10% off.
 ```
 
-Already using another agent workflow such as pstack? `cstack verify` gates a change that is already in your working copy, with no model and no repository changes. [Verify a change →](docs/VERIFY.md)
+Repairs use a signed-in Claude Code (`--worker claude`) or Codex (`--worker codex`) CLI. Analysis and `verify` need neither. [Setup →](docs/SETUP.md)
 
-Analysis works on current files, including dirty projects. Repairs use a clean Git baseline by default; explicit working-copy mode captures existing edits and preserves staging. Coding requires a supported authenticated Codex CLI and an available isolated verifier. [Installation and setup →](docs/CODEX_PLUGIN.md)
+## See it in 30 seconds
+
+`npm run demo` needs no model or login. A cart total ignores item quantity; an "agent" claims a wrong fix, then rewrites the checks, then makes a real fix:
+
+```text
+1. The agent "fixes" it and says: "Done, all tests pass."
+   cstack verify
+  → FAILED: Required checks fail on this change: QTY (FAIL)
+    QTY: Expected 24; observed 12
+
+2. The agent edits the checks so they pass and says "Done" again.
+   cstack verify
+  → FAILED: Required checks fail on this change: QTY (FAIL)
+    (the edited checks were ignored: verify read them from the committed base)
+    QTY: Expected 24; observed 12
+
+3. A real fix.
+   cstack verify
+  → DONE: All required checks pass on this change with current evidence, and no review is pending.
+```
 
 ## Five skills, one plugin
 
@@ -89,7 +90,7 @@ Analysis works on current files, including dirty projects. Repairs use a clean G
 | **Graph map** | Python, JavaScript and TypeScript file dependencies; incoming/outgoing imports; file/line evidence; Markdown, JSON and Mermaid exports. | You need to understand a codebase or identify files worth reviewing before a change. |
 | **Stack analysis** | Scoped application/test/example/benchmark inventories; language, framework and tool declarations; entrypoints and error-frame locations with file evidence. | You are onboarding to a project or investigating a Python/Node error trace. |
 | **Impact analysis** | Direct dependencies, downstream consumers, candidate tests, import cycles, and labelled historical edges for deleted files; Markdown, JSON and Mermaid exports. | You want to see which parts of a project may be affected by a file or Git change. |
-| **Checked repair** | Project setup and frozen plans; one coding worker; independent checks; progress, usage and private review reports; patch preview and recoverable delivery. | You want a focused fix with an inspectable completion record. |
+| **Checked repair** | `cstack fix`: drafted probe checks you approve, then one Claude Code or Codex worker in a private worktree; optional parallel alternates chosen by evidence; progress, usage and review reports; patch preview and recoverable delivery. | You want a focused fix with an inspectable completion record. |
 | **Verify** | A model-free `done` / `failed` / `needs_you` verdict for an existing change: checks fail on the base and pass on the change, frozen checks, sandboxed, evidence bound to the exact tree; `--check` before commit or merge. | Another agent or workflow (pstack, Claude Code, Cursor) made the change and you need proof before calling it done. |
 
 **Error locations, too.** Supply a Python or Node.js error trace to stack analysis to match its frames back to project files. Reported locations guide investigation; they do not prove the root cause.
@@ -113,9 +114,25 @@ The scanner reports limits and skipped files. It excludes credential-named input
 
 </details>
 
-## Benchmarks
+## Measuring false completions
 
-**cStack 0.5 versus pstack on five selected public SWE-bench bugs.** Real GPT-6.1 Sol invocations, Codex CLI 0.163.0, Docker verification and a separate private bug grader. All workflows below passed all five bug tasks.
+The benchmark that matters asks: when an agent says "done", is it done, and does cStack catch it when it is not? [`bench/fc.mjs`](bench/fc/README.md) records three independent facts per trial:
+- **claim:** did the agent say done?
+- **gate:** what does `cstack verify` say?
+- **truth:** do held-out hidden checks that no agent saw pass?
+
+It reports false completions, how many the gate caught, and good fixes the gate wrongly blocked, with 95% intervals. Arms can be plain Claude Code, plain Codex, cStack with either worker, or runs imported from elsewhere, such as pstack in Cursor.
+
+Six small seed tasks are included and validated, and scripted agents show the expected behaviour:
+- a lazy "done" is caught;
+- rewriting the checks is caught;
+- overfitting the public checks passes the gate and is caught only by hidden cases.
+
+**No results from real models are published yet.** Those runs need model accounts and are the next step.
+
+## Earlier benchmark (cStack 0.5)
+
+**Historical: cStack 0.5 versus pstack on five selected public SWE-bench bugs.** These runs predate the Claude worker, `verify` and the Docker removal, used a Codex adaptation of pstack with every role on one model, and all workflows passed, so they say nothing about false completions. Real GPT-6.1 Sol invocations, Codex CLI 0.163.0, Docker verification and a separate private bug grader. All workflows below passed all five bug tasks.
 
 ![Total tokens across five bugs: cStack single-agent 0.87M versus pstack single-agent 2.05M; cStack multi-agent 3.07M versus pstack multi-agent 7.21M. Lower is better.](docs/assets/benchmark-tokens.svg)
 
@@ -185,7 +202,7 @@ cStack is an early-stage local tool. Its checks establish the configured outcome
 |---|---|
 | Local graph, stack and impact helpers | Node.js **22.13+** and the project files. Git is optional for directory analysis. |
 | Codex plugin installation | Node.js **22.13+** and Codex CLI with `codex plugin` support; tested with **0.163.0**. |
-| Checked repairs | Git, supported Codex CLI with existing ChatGPT sign-in (or an explicitly selected stored API key), and the project's own dependencies installed in git-ignored folders. Linux needs unprivileged user namespaces; macOS uses the built-in `sandbox-exec`. Use WSL2 for Windows. |
+| Checked repairs | Git, a signed-in Claude Code CLI (2.1.259+, subscription login; bash sandbox needs `bubblewrap` and `socat` on Linux) or Codex CLI (ChatGPT login), with API-key login only when explicitly selected, and the project's own dependencies installed in git-ignored folders. Linux needs unprivileged user namespaces; macOS uses the built-in `sandbox-exec`. Use WSL2 for Windows. |
 | Optional benchmark tooling | Python **3.12**, Docker (SWE-bench tasks ship as images; cStack itself does not use Docker) and the [pinned benchmark environment](bench/README.md). |
 
 cStack does not install project dependencies, build images or fall back to API-key billing; API-key worker auth is used only when `CSTACK_CODEX_AUTH=api-key` is set. The coding worker uses Codex's own sandbox; cStack's isolated verifier is a separate boundary. The registered local marketplace must remain available for future refreshes; the installed runtime runs from Codex's cache. [Setup details →](docs/CODEX_PLUGIN.md)
@@ -216,6 +233,8 @@ Tests cover false completion, isolation, changed evidence, crash/retry/resume be
 | [Codex plugin guide](docs/CODEX_PLUGIN.md) | Installation, skill discovery, requirements and installed-package validation. |
 | [Graph mapping and stack analysis](docs/PROJECT_ANALYSIS.md) | Supported formats, error frames, exports, evidence and scan limits. |
 | [Verify a change](docs/VERIFY.md) | The `verify` gate, checks files, outcomes, pstack integration, hooks and CI. |
+| [False-completion benchmark](bench/fc/README.md) | Claim versus gate versus hidden truth, arms, tasks and importing pstack runs. |
+| [Release checklist](docs/launch/CHECKLIST.md) | What must be checked on real machines and accounts before announcing. |
 | [Completion contracts](docs/CONTRACT.md) | Observable checks, review steps and the frozen repair objective. |
 | [cStack versus pstack](docs/benchmarks/2026-11-02-cstack-vs-pstack.json) | Current comparison figures, mode-specific advantages, methodology and source identities. |
 | [Project setup](docs/SETUP.md) | Private profiles, installed dependency folders, baseline reproduction and supported test adapters. |
