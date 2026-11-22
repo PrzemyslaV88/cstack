@@ -78,7 +78,12 @@ export async function fixDraft({ repo = '.', goal, worker = 'codex', checks, yes
   const setup = await setupProject(root, { home, signal });
   if (!setup.ready) return { schema_version: 1, id, outcome: 'needs_you', stage: 'setup', reason: 'Project setup is not ready: ' + setup.next_action, next_action: setup.next_action };
   let spec, source;
-  if (checks) { spec = await readJson(resolve(checks)); source = 'provided'; }
+  if (checks) {
+    // The same checks file works for `verify` and `fix`: the goal comes from the command, dependencies
+    // from the project profile, and a timeout becomes the run's active-time budget.
+    const { goal: _goal, dependencies: _deps, timeout_ms, ...rest } = await readJson(resolve(checks));
+    spec = { ...rest, ...(timeout_ms ? { budget: { ...(rest.budget || {}), max_active_ms: timeout_ms } } : {}) }; source = 'provided';
+  }
   else { const drafted = await draftChecks({ root, goal, worker, profile: setup.details, home, signal, draftWorker }); spec = drafted.spec; source = 'drafted by ' + worker; }
   await mkdir(dir, { recursive: true, mode: 0o700 });
   const acceptance = join(dir, 'acceptance.json');

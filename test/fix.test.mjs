@@ -84,7 +84,7 @@ test('FIX-06: approval is bound to the shown plan and the unchanged project', as
 
 test('FIX-07: provided checks skip drafting; the draft prompt names the file and forbids edits', async t => {
   const f = await project(t), checks = join(f.root, 'checks.json');
-  await writeFile(checks, JSON.stringify(goodDraft));
+  await writeFile(checks, JSON.stringify({ goal: 'verify-format checks file', dependencies: [], timeout_ms: 300000, ...goodDraft }));
   const r = await fixDraft({ repo: f.repo, goal: 'Repair calculator addition', home: f.home, checks, draftWorker: () => assert.fail('no drafting with --checks') });
   assert.equal(r.stage, 'approve'); assert.equal(r.checks_source, 'provided');
   assert.match(draftPrompt('x'), new RegExp(DRAFT_FILE)); assert.match(draftPrompt('x'), /not from the current output/);

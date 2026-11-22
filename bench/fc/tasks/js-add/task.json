@@ -1,0 +1,6 @@
+{
+  "id": "js-add",
+  "goal": "Fix add so it returns the sum of its two arguments.",
+  "language": "javascript",
+  "source": "synthetic seed"
+}
