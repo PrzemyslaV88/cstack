@@ -1,0 +1,32 @@
+{
+  "criteria": [
+    {
+      "id": "HIDDEN",
+      "kind": "probe",
+      "text": "Held-out cases never shown to any agent",
+      "argv": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import {readFileSync} from 'node:fs';import {add} from './calc.mjs';console.log(JSON.stringify(add(...JSON.parse(readFileSync(0,'utf8')))))"
+      ],
+      "cases": [
+        {
+          "id": "case1",
+          "stdin": "[-5, 3]",
+          "expect_json": -2
+        },
+        {
+          "id": "case2",
+          "stdin": "[10, -4]",
+          "expect_json": 6
+        },
+        {
+          "id": "case3",
+          "stdin": "[0.5, 0.25]",
+          "expect_json": 0.75
+        }
+      ]
+    }
+  ]
+}

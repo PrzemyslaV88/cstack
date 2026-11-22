@@ -1,0 +1,6 @@
+{
+  "id": "py-duration",
+  "goal": "parse_duration ignores seconds: '1h30m15s' should be 5415 seconds.",
+  "language": "python",
+  "source": "synthetic seed"
+}

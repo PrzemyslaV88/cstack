@@ -11,8 +11,9 @@ cstack verify --repo . --checks .cstack/checks.json --format json   # exit 0 don
 cstack verify --check RUN_ID                                       # right before commit/push/merge
 ```
 
-In the Codex plugin the same command is the `cstack:verify` skill
-(`skills/verify/scripts/verify.mjs`).
+In Claude Code (`/plugin install cstack --marketplace PrzemyslaV88/cstack`) it is the
+`/cstack:verify` skill, and `cstack` is on the Bash tool's PATH. In Codex it is the
+`$cstack:verify` skill.
 
 ## What it proves
 

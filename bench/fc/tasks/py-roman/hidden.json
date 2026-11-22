@@ -1,0 +1,38 @@
+{
+  "criteria": [
+    {
+      "id": "HIDDEN",
+      "kind": "probe",
+      "text": "Held-out cases never shown to any agent",
+      "argv": [
+        "python",
+        "-I",
+        "-B",
+        "-c",
+        "import json,sys;sys.path.insert(0,'.');from roman import to_roman;print(json.dumps(to_roman(*json.load(sys.stdin))))"
+      ],
+      "cases": [
+        {
+          "id": "case1",
+          "stdin": "[9]",
+          "expect_json": "IX"
+        },
+        {
+          "id": "case2",
+          "stdin": "[40]",
+          "expect_json": "XL"
+        },
+        {
+          "id": "case3",
+          "stdin": "[1994]",
+          "expect_json": "MCMXCIV"
+        },
+        {
+          "id": "case4",
+          "stdin": "[3999]",
+          "expect_json": "MMMCMXCIX"
+        }
+      ]
+    }
+  ]
+}

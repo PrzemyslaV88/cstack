@@ -1,0 +1,13 @@
+{
+  "name": "cstack",
+  "description": "cStack: verify agent changes before they are called done, and run sandbox-checked repairs.",
+  "owner": { "name": "cStack" },
+  "plugins": [
+    {
+      "name": "cstack",
+      "source": "./",
+      "description": "Verify any agent's change before it is called done, run sandbox-checked repairs with Claude Code or Codex workers, and map dependencies and change impact.",
+      "category": "development"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "py-roman",
+  "goal": "to_roman should use subtractive notation, so 4 is IV and 9 is IX.",
+  "language": "python",
+  "source": "synthetic seed"
+}

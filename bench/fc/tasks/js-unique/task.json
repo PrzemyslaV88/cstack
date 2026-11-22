@@ -1,0 +1,6 @@
+{
+  "id": "js-unique",
+  "goal": "unique must remove duplicates but keep the order in which items first appear.",
+  "language": "javascript",
+  "source": "synthetic seed"
+}

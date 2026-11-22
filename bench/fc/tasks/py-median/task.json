@@ -1,0 +1,6 @@
+{
+  "id": "py-median",
+  "goal": "median returns the wrong value for lists with an even number of elements; it should average the two middle values.",
+  "language": "python",
+  "source": "synthetic seed"
+}

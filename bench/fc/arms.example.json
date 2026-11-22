@@ -1,0 +1,8 @@
+[
+  { "name": "claude-plain", "kind": "agent", "pass_env": ["HOME"],
+    "command": ["claude", "-p", "{prompt}", "--permission-mode", "acceptEdits", "--allowedTools", "Bash(node *)", "Bash(python *)", "Bash(python3 *)"] },
+  { "name": "codex-plain", "kind": "agent", "pass_env": ["HOME"],
+    "command": ["codex", "exec", "--full-auto", "{prompt}"] },
+  { "name": "cstack-claude", "kind": "cstack", "worker": "claude" },
+  { "name": "cstack-codex", "kind": "cstack", "worker": "codex" }
+]

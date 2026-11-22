@@ -76,3 +76,33 @@ test('VERIFY-13: the relocated verify skill gates an existing change without the
   assert.equal(body.outcome, 'done'); assert.equal(body.model_invoked, false);
   assert.ok(body.report.startsWith(f.home));
 });
+
+test('CLAUDE-PLUGIN-01: Claude Code manifests follow the documented plugin and marketplace rules', async t => {
+  const { access, stat } = await import('node:fs/promises'), { constants } = await import('node:fs');
+  const repo = join(import.meta.dirname, '..'), pkg = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'));
+  const checkPlugin = async (root, manifest) => {
+    assert.equal(manifest.name, 'cstack'); assert.match(manifest.name, /^[a-z0-9]+(-[a-z0-9]+)*$/); assert.equal(manifest.version, pkg.version);
+    assert.equal(manifest.license, 'MIT'); new URL(manifest.homepage);
+    for (const p of [].concat(manifest.skills || [])) { assert.match(p, /^\.\//); assert.ok(!p.includes('..')); await access(join(root, p)); }
+    const skills = manifest.skills ? join(root, [].concat(manifest.skills)[0]) : join(root, 'skills');
+    for (const name of ['cstack', 'verify', 'graph-map', 'impact-analysis', 'stack-analysis']) {
+      const text = await readFile(join(skills, name, 'SKILL.md'), 'utf8'); assert.match(text, /^---\nname: [a-z-]+\ndescription: .{20,}/, name);
+    }
+  };
+  // Repository root: a one-plugin marketplace whose plugin root is the repository itself.
+  const marketplace = JSON.parse(await readFile(join(repo, '.claude-plugin/marketplace.json'), 'utf8'));
+  assert.equal(marketplace.name, 'cstack'); assert.ok(marketplace.owner.name);
+  assert.deepEqual(marketplace.plugins.map(p => [p.name, p.source]), [['cstack', './']]);
+  await checkPlugin(repo, JSON.parse(await readFile(join(repo, '.claude-plugin/plugin.json'), 'utf8')));
+  assert.ok((await stat(join(repo, 'bin/cstack'))).mode & constants.S_IXUSR);
+  // Built bundle: the Claude marketplace sits beside the Codex catalog and points at the bundle.
+  const root = await temporary(t), built = await buildPlugin({ output: join(root, 'marketplace') });
+  const local = JSON.parse(await readFile(join(built.marketplaceRoot, '.claude-plugin/marketplace.json'), 'utf8'));
+  assert.equal(local.plugins[0].name, 'cstack'); assert.match(local.plugins[0].source, /^\.\/plugins\/cstack-/);
+  assert.equal(join(built.marketplaceRoot, local.plugins[0].source), built.pluginRoot);
+  await checkPlugin(built.pluginRoot, JSON.parse(await readFile(join(built.pluginRoot, '.claude-plugin/plugin.json'), 'utf8')));
+  const help = await command([join(built.pluginRoot, 'bin/cstack'), '--help'], { cwd: root });
+  assert.equal(help.code, 0); assert.match(help.stdout, /cstack verify/);
+  const fromCheckout = await command([process.execPath, join(repo, 'plugin/skills/verify/scripts/verify.mjs'), '--help'], { cwd: root });
+  assert.equal(fromCheckout.code, 0, 'a repository install runs the skills against src/ without a build');
+});

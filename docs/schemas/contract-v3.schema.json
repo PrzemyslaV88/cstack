@@ -572,6 +572,40 @@
       ],
       "default": "additive",
       "description": "additive: existing Python test modules that only gain tests need no change review when every required check also passes with the original test files. review: every existing test/configuration change needs human review."
+    },
+    "worker": {
+      "enum": [
+        "codex",
+        "claude"
+      ],
+      "default": "codex",
+      "description": "Coding worker for repairs: Codex CLI or Claude Code. Both run isolated; the cStack verifier decides completion."
+    },
+    "alternates": {
+      "type": "object",
+      "description": "After the first failed attempt, run up to three independent attempts in parallel (optionally on different workers) and adopt the smallest change that passes every required check; it then faces all normal gates.",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "workers": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "codex",
+              "claude"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
     }
   },
   "required": [

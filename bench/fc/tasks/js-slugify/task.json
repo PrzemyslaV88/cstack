@@ -1,0 +1,6 @@
+{
+  "id": "js-slugify",
+  "goal": "slugify should lowercase, trim, and turn every run of whitespace into a single hyphen.",
+  "language": "javascript",
+  "source": "synthetic seed"
+}

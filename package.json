@@ -18,7 +18,9 @@
     "bench:multiagent": "bash scripts/multiagent.sh",
     "test:live": "node scripts/live-smoke.mjs",
     "plugin:build": "node scripts/build-plugin.mjs",
-    "plugin:install": "node scripts/install-plugin.mjs"
+    "plugin:install": "node scripts/install-plugin.mjs",
+    "plugin:install:claude": "node scripts/install-claude-plugin.mjs",
+    "demo": "node scripts/demo.mjs"
   },
   "license": "MIT"
 }

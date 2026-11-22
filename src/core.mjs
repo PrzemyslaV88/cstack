@@ -8,7 +8,9 @@ import { createRecord, loadRun, commitRun, lockRun, unlockRun, exportState, open
 import { inspectRepo, createWorktree, sealCandidate, fingerprint, manifest, manifestChanges, changedPaths, git, captureOrigin, overlayOrigin, linkEnvironment } from './snapshot.mjs';
 import { resolveDependencies } from './environment.mjs';
 import { createRunner } from './sandbox.mjs';
-import { codexWorker, preflightCodex, usageTotals } from './codex.mjs';
+import { codexWorker, usageTotals } from './codex.mjs';
+import { workerFor } from './workers.mjs';
+import { runAlternates } from './alternates.mjs';
 import { verify, failurePacket, verifierIdentity } from './verification.mjs';
 import { codeMap, updateTasks, taskReady } from './graph.mjs';
 import { testPath, configPath } from './file-policy.mjs';
@@ -173,7 +175,8 @@ export function promptFor(run, task, context) {
     'Report your changed diagnosis and remaining blockers. Your prose is not a completion signal.'].filter(Boolean).join('\n\n').slice(0, 22_000);
 }
 
-export async function processRun(input, { home = dataHome(), worker = codexWorker, signal, afterAttempt, onEvent } = {}) {
+// Without an explicit `worker` (tests, verify's importer) the contract's worker runs after its preflight.
+export async function processRun(input, { home = dataHome(), worker, signal, afterAttempt, onEvent } = {}) {
   const token = lockRun(input.id, home);
   let run, lastCharge = Date.now();
   function persist(kind, payload = {}) {
@@ -185,7 +188,7 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
   function stop(status, reason) { run.status = status; run.reason = reason; }
   async function measure(phase, operation) {
     run.journey ||= [];
-    const names={baseline_ms:'baseline_started',context_ms:'context_started',verification_ms:'verification_started',test_change_ms:'test_change_started',worker_ms:'worker_started'};
+    const names={baseline_ms:'baseline_started',context_ms:'context_started',verification_ms:'verification_started',test_change_ms:'test_change_started',alternates_ms:'alternates_started',worker_ms:'worker_started'};
     const name=names[phase]||phase;
     persist('phase',{phase:name});
     const index=run.journey.length;
@@ -239,14 +242,16 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       if (run.contract.criteria.filter(c => c.required && task.criteria.includes(c.id)).every(c => c.kind === 'manual') && run.attempts.some(a => a.task_id === task.id)) {
         stop('NEEDS_MANUAL_VERIFICATION', 'Required manual acceptance is pending'); break;
       }
-      const used = run.attempts.filter(a => a.task_id === task.id).length, limits = run.contract.budget;
+      // Alternates are bounded by the run-wide budget and their own count, not the per-task correction limit.
+      const used = run.attempts.filter(a => a.task_id === task.id && !a.alternate).length, limits = run.contract.budget;
       if (used >= run.contract.attempt_limit) { stop('STALLED', `Attempt cap reached for ${task.id}; resumes retain all reservations`); break; }
       if (run.attempts.length >= limits.max_attempts || usageTotals(run.usage).observed_total_tokens >= limits.max_observed_tokens) {
         stop('BUDGET_EXHAUSTED', 'Run-wide attempt/observed-token admission ceiling reached'); break;
       }
       run.accounting = accountingForRun(run.attempts);
       if (!run.accounting.can_admit) { run.stop_code = 'USAGE_UNRESOLVED'; stop('BLOCKED', 'Earlier worker usage is unresolved; preserved work, no further worker admitted'); break; }
-      if (worker === codexWorker) run.auth = await preflightCodex();
+      const agent = worker ? null : workerFor(run.contract);
+      if (agent) run.auth = await agent.preflight();
       const context = await measure('context_ms', () => run.contract.schema_version===3?buildContext(run.worktree,run.contract,{results:run.results,previous:run.context_sent,thread:run.thread_id,conventions:run.project_profile?.conventions||[]}):codeMap(run.worktree, run.contract.goal, { maxFiles: 12, maxBytes: 40_000 }));
       if(context.manifest){const stored=await immutableJson(join(home,'runs',run.id,'contexts'),{...context,text:context.text});context.artifact=stored.path;}
       if (remaining() <= 0 || signal?.aborted) { stop('BUDGET_EXHAUSTED', 'Run deadline reached before worker admission'); break; }
@@ -258,7 +263,7 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       let result;
       try {
         const started = Date.now();
-        result = await measure('worker_ms', () => worker({ run: structuredClone(run), prompt, signal,
+        result = await measure('worker_ms', () => (worker || agent.run)({ run: structuredClone(run), prompt, signal,
           timeoutMs: Math.max(1, Math.min(limits.worker_timeout_ms, remaining())),
           onSpawn: pid => { attempt.pid = pid; attempt.status = 'RUNNING'; persist('worker_started', { id: attempt.id, pid }); } }));
         attempt.worker_ms = Date.now() - started;
@@ -282,8 +287,14 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       persist('attempt_evaluated', { id: attempt.id, decision: attempt.decision });
       if (afterAttempt) await afterAttempt(structuredClone(run)); // Test/observability callback, never an authority.
       if (verdict) { stop(...verdict); break; }
+      if (run.contract.alternates && !run.alternates_summary && !signal?.aborted && remaining() > 0) {
+        const { winner } = await measure('alternates_ms', () => runAlternates(run, { task, home, runner, worker, signal, remaining, persist, prompt: promptFor,
+          context: clone => clone.contract.schema_version === 3 ? buildContext(clone.worktree, clone.contract, { results: run.results, previous: null, thread: null, conventions: run.project_profile?.conventions || [] })
+            : codeMap(clone.worktree, clone.contract.goal, { maxFiles: 12, maxBytes: 40_000 }) }));
+        if (winner) { await examine(runner); run.status = 'READY'; continue; } // The adopted candidate faces every normal gate.
+      }
       if (attempt.after === attempt.before) { stop('STALLED', 'No candidate change and required behavior still fails'); break; }
-      const prior = run.attempts.filter(a => a.task_id === task.id && a.id !== attempt.id).at(-1);
+      const prior = run.attempts.filter(a => a.task_id === task.id && a.id !== attempt.id && !a.alternate).at(-1);
       if (prior?.failure_signature === attempt.failure_signature && attempt.passing <= prior.passing) {
         stop('STALLED', 'Repeated identical failure without measured progress. A new diagnosis is needed.'); break;
       }
@@ -346,7 +357,7 @@ export async function writeReport(run, home = dataHome()) {
     `Contract: ${run.contract_hash}`, `Runner: ${run.contract.runner.backend} / ${run.runner_identity || 'not checked'}`,
     `Reserved worker invocations: ${run.attempts.length}/${run.contract.budget.max_attempts}`, `Active time: ${run.spent_ms} ms`,
     `Input tokens: ${totals.input_tokens}; cached subset: ${totals.cached_input_tokens}; output: ${totals.output_tokens}; reasoning subset: ${totals.reasoning_output_tokens}`,
-    `Worker authentication: ${run.auth?.authentication || 'not checked'}${run.auth?.authentication === 'api-key' ? ' (explicitly selected; usage is billed to the API account)' : ''}`,
+    `Worker: ${run.contract.worker || 'codex'}; authentication: ${run.auth?.authentication || 'not checked'}${run.auth?.authentication === 'api-key' ? ' (explicitly selected; usage is billed to the API account)' : ''}`,
     'Subscription allowance remaining: **unknown**. Token counters are not subscription allowance. A completed turn can overshoot the observed-token admission ceiling.',
     `Invocations without reported usage: ${run.attempts.filter(a => a.usage_unknown).length}`,
     `Usage accounting: ${JSON.stringify(accountingForRun(run.attempts))}`,

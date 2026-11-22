@@ -8,7 +8,20 @@ controller as `CSTACK`. Read [references/contracts.md](references/contracts.md) 
 writing acceptance criteria. The controller's frozen contract, snapshots and
 current evidence determine completion.
 
-For a new repair:
+Fastest path for a new repair:
+
+- Run `node "$CSTACK" fix "GOAL" --repo "$REPO" --worker claude --format json` in
+  Claude Code (`--worker codex` in Codex). It sets up the project, lets the worker
+  draft probe checks only, and proves at least one fails on today's code.
+- Show the user the returned `cases` as a short table: input, expected, today. Ask
+  whether those expectations are right. Only after the user agrees, run
+  `node "$CSTACK" fix --approve FIX_ID --format json`. Never approve on their behalf
+  and never use `--yes` unless the user asked to skip the review.
+- Report the `outcome`. On `needs_you` at stage `checks`, the drafted checks did not
+  reproduce the problem: ask the user for the expected behavior or a checks file
+  (`--checks FILE`).
+
+Step by step, for full control:
 
 1. Use the user's requested project and observable outcome. Run `setup --repo`.
    It discovers the project's installed, git-ignored dependency folders
@@ -19,8 +32,10 @@ For a new repair:
    failed coding attempts: tell the user which install command to run. Never
    install dependencies yourself or ask for Docker; cStack 0.6 has no images.
 2. Write an acceptance JSON file outside the project with concrete independent
-   probe inputs and expected outputs. Use the user's model choice (default
-   `gpt-6.1-sol`) and applicable budgets. Do not replace an automatable outcome with
+   probe inputs and expected outputs. Pick the coding worker that matches the host
+   you are running in: `plan --worker claude` inside Claude Code, `--worker codex`
+   (the default) inside Codex. Use the user's model choice if they gave one, otherwise
+   the worker's own default, and applicable budgets. Do not replace an automatable outcome with
    manual-only acceptance. `plan "GOAL" --repo --profile --acceptance --out` freezes
    the request and reproduces the baseline. It does not fabricate expected outputs
    or call a model. `ALREADY_SATISFIED` means the supplied checks already pass; do
@@ -54,9 +69,12 @@ Use `approve` only after an actual human has reviewed the exact snapshot and
 instructed that approval; record their note. Do not supply approval on their behalf
 just to finish a test or benchmark. A report is not an approval interface.
 
-The worker disables plugins, hooks and delegation. Keep those controls intact.
+The worker disables plugins, hooks, MCP servers, web tools and delegation, and its
+shell has no network. Keep those controls intact. Claude Code workers need the
+subscription login (or `CSTACK_CLAUDE_AUTH=api-key` set by the user); Codex workers
+need the ChatGPT login (or `CSTACK_CODEX_AUTH=api-key`).
 Provider/account limits are recorded stops; no API-key billing fallback (API-key
-worker auth only when the user set `CSTACK_CODEX_AUTH=api-key`). Token counts are
+worker auth only when the user set `CSTACK_CODEX_AUTH=api-key` or `CSTACK_CLAUDE_AUTH=api-key`). Token counts are
 observed worker usage, not remaining subscription credits or necessarily the outer
 chat's total cost. The worker and the sandboxed verifier share the project's
 installed dependencies. Lead results with the `outcome` (`done`, `needs_you`,

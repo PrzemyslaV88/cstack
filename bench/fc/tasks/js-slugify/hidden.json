@@ -1,0 +1,32 @@
+{
+  "criteria": [
+    {
+      "id": "HIDDEN",
+      "kind": "probe",
+      "text": "Held-out cases never shown to any agent",
+      "argv": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import {readFileSync} from 'node:fs';import {slugify} from './slug.mjs';console.log(JSON.stringify(slugify(...JSON.parse(readFileSync(0,'utf8')))))"
+      ],
+      "cases": [
+        {
+          "id": "case1",
+          "stdin": "[\"  Many   spaces here \"]",
+          "expect_json": "many-spaces-here"
+        },
+        {
+          "id": "case2",
+          "stdin": "[\"Tabs\\tand\\nlines\"]",
+          "expect_json": "tabs-and-lines"
+        },
+        {
+          "id": "case3",
+          "stdin": "[\"Already-slug\"]",
+          "expect_json": "already-slug"
+        }
+      ]
+    }
+  ]
+}

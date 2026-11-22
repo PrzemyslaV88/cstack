@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+// On the PATH of Claude Code's Bash tool while the plugin is enabled.
+await import(new URL('../skills/cstack/scripts/cstack.mjs', import.meta.url));
