@@ -135,23 +135,30 @@
     "next_action": {
       "type": "string",
       "minLength": 1
+    },
+    "worker": {
+      "enum": [
+        "codex",
+        "claude"
+      ]
     }
   },
   "required": [
-    "schema_version",
-    "ready",
-    "code",
-    "contract_digest",
-    "profile_digest",
-    "environment_digest",
-    "origin",
-    "model",
-    "reasoning",
-    "context_policy",
-    "versions",
-    "verifier_identity",
     "baseline",
-    "next_action"
+    "code",
+    "context_policy",
+    "contract_digest",
+    "environment_digest",
+    "model",
+    "next_action",
+    "origin",
+    "profile_digest",
+    "ready",
+    "reasoning",
+    "schema_version",
+    "verifier_identity",
+    "versions",
+    "worker"
   ],
   "additionalProperties": false
 }

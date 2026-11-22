@@ -26,7 +26,8 @@ export async function buildPlugin({ output = join(repo, 'dist/cstack-marketplace
   const pkg = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'));
   const portable = JSON.parse(files.get('plugin.json').bytes);
   const overlay = JSON.parse(files.get('.codex-plugin/plugin.json').bytes);
-  if (portable.name !== 'cstack' || portable.version !== pkg.version || overlay.version !== pkg.version) {
+  const claude = JSON.parse(files.get('.claude-plugin/plugin.json').bytes);
+  if (portable.name !== 'cstack' || portable.version !== pkg.version || overlay.version !== pkg.version || claude.name !== 'cstack' || claude.version !== pkg.version) {
     throw new Error('Plugin manifest versions must match package.json');
   }
   files.set('runtime/package.json', { bytes: Buffer.from(json({ name: '@cstack/plugin-runtime', version: pkg.version,
@@ -81,6 +82,15 @@ export async function buildPlugin({ output = join(repo, 'dist/cstack-marketplace
   await writeFile(catalogPath, json({ name: 'cstack-local', interface: { displayName: 'cStack Local' },
     plugins: [{ name: 'cstack', source: { source: 'local', path: './' + relative },
       policy: { installation: 'AVAILABLE', authentication: 'ON_INSTALL', products: ['CODEX'] }, category: 'Developer Tools' }] }));
+  // Claude Code marketplace beside the Codex catalog; relative sources resolve from the marketplace root.
+  const claudeCatalog = join(marketplaceRoot, '.claude-plugin/marketplace.json');
+  try {
+    const existing = JSON.parse(await readFile(claudeCatalog, 'utf8'));
+    if (existing.name !== 'cstack-local' || existing.plugins.length !== 1 || existing.plugins[0].name !== 'cstack') throw new Error('Refusing to replace an unrelated Claude marketplace');
+  } catch (e) { if (e.code !== 'ENOENT') throw e; }
+  await mkdir(dirname(claudeCatalog), { recursive: true });
+  await writeFile(claudeCatalog, json({ name: 'cstack-local', description: 'Local cStack build', owner: { name: 'cStack' },
+    plugins: [{ name: 'cstack', source: './' + relative, description: claude.description, version: pkg.version, category: 'development' }] }));
   const result = { marketplace: 'cstack-local', marketplaceRoot, pluginRoot, version: pkg.version, sourceDigest: digest, files: files.size };
   await writeFile(join(marketplaceRoot, 'build-result.json'), json(result));
   return result;

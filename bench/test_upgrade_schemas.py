@@ -31,7 +31,7 @@ class UpgradeSchemaTests(unittest.TestCase):
         sha='a'*64
         profile={'schema_version':1,'scope':'.','evidence':[],'runtime':{'kind':'node','declared_version':None},'test':{'adapter':'none','roots':[],'expected_tests':[],'plugins':[]},'environment':{'mode':'host','dependencies':['.venv'],'lockfiles':[]},'conventions':[],'readiness':'draft','missing':[]}
         versions={'plan':2,'context':'evidence-v1','adapters':2,'profile':2}
-        plan={'schema_version':1,'ready':False,'code':'PLAN_NOT_READY','contract_digest':sha,'profile_digest':sha,'environment_digest':sha,'origin':{'root_id':sha,'head':'a'*40,'ref':'refs/heads/main','index_digest':sha,'inventory_digest':sha,'source_mode':'clean'},'model':'gpt-6.1-sol','reasoning':'medium','context_policy':'evidence-v1','versions':versions,'verifier_identity':sha,'baseline':[],'next_action':'Prepare project'}
+        plan={'schema_version':1,'ready':False,'code':'PLAN_NOT_READY','contract_digest':sha,'profile_digest':sha,'environment_digest':sha,'worker':'codex','origin':{'root_id':sha,'head':'a'*40,'ref':'refs/heads/main','index_digest':sha,'inventory_digest':sha,'source_mode':'clean'},'model':'gpt-6.1-sol','reasoning':'medium','context_policy':'evidence-v1','versions':versions,'verifier_identity':sha,'baseline':[],'next_action':'Prepare project'}
         for schema_name,module,validator,value in [('project-profile','project-profile','profileShape',profile),('job-plan','job-plan','validateJobPlan',plan)]:
             schema=json.loads((ROOT/f'docs/schemas/{schema_name}.schema.json').read_text());jsonschema.Draft202012Validator.check_schema(schema)
             for record,valid in [(value,True),({**value,'unexpected':'not allowed'},False)]:

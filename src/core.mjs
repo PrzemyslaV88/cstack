@@ -8,7 +8,8 @@ import { createRecord, loadRun, commitRun, lockRun, unlockRun, exportState, open
 import { inspectRepo, createWorktree, sealCandidate, fingerprint, manifest, manifestChanges, changedPaths, git, captureOrigin, overlayOrigin, linkEnvironment } from './snapshot.mjs';
 import { resolveDependencies } from './environment.mjs';
 import { createRunner } from './sandbox.mjs';
-import { codexWorker, preflightCodex, usageTotals } from './codex.mjs';
+import { codexWorker, usageTotals } from './codex.mjs';
+import { workerFor } from './workers.mjs';
 import { verify, failurePacket, verifierIdentity } from './verification.mjs';
 import { codeMap, updateTasks, taskReady } from './graph.mjs';
 import { testPath, configPath } from './file-policy.mjs';
@@ -173,7 +174,8 @@ export function promptFor(run, task, context) {
     'Report your changed diagnosis and remaining blockers. Your prose is not a completion signal.'].filter(Boolean).join('\n\n').slice(0, 22_000);
 }
 
-export async function processRun(input, { home = dataHome(), worker = codexWorker, signal, afterAttempt, onEvent } = {}) {
+// Without an explicit `worker` (tests, verify's importer) the contract's worker runs after its preflight.
+export async function processRun(input, { home = dataHome(), worker, signal, afterAttempt, onEvent } = {}) {
   const token = lockRun(input.id, home);
   let run, lastCharge = Date.now();
   function persist(kind, payload = {}) {
@@ -246,7 +248,8 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       }
       run.accounting = accountingForRun(run.attempts);
       if (!run.accounting.can_admit) { run.stop_code = 'USAGE_UNRESOLVED'; stop('BLOCKED', 'Earlier worker usage is unresolved; preserved work, no further worker admitted'); break; }
-      if (worker === codexWorker) run.auth = await preflightCodex();
+      const agent = worker ? null : workerFor(run.contract);
+      if (agent) run.auth = await agent.preflight();
       const context = await measure('context_ms', () => run.contract.schema_version===3?buildContext(run.worktree,run.contract,{results:run.results,previous:run.context_sent,thread:run.thread_id,conventions:run.project_profile?.conventions||[]}):codeMap(run.worktree, run.contract.goal, { maxFiles: 12, maxBytes: 40_000 }));
       if(context.manifest){const stored=await immutableJson(join(home,'runs',run.id,'contexts'),{...context,text:context.text});context.artifact=stored.path;}
       if (remaining() <= 0 || signal?.aborted) { stop('BUDGET_EXHAUSTED', 'Run deadline reached before worker admission'); break; }
@@ -258,7 +261,7 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       let result;
       try {
         const started = Date.now();
-        result = await measure('worker_ms', () => worker({ run: structuredClone(run), prompt, signal,
+        result = await measure('worker_ms', () => (worker || agent.run)({ run: structuredClone(run), prompt, signal,
           timeoutMs: Math.max(1, Math.min(limits.worker_timeout_ms, remaining())),
           onSpawn: pid => { attempt.pid = pid; attempt.status = 'RUNNING'; persist('worker_started', { id: attempt.id, pid }); } }));
         attempt.worker_ms = Date.now() - started;
@@ -346,7 +349,7 @@ export async function writeReport(run, home = dataHome()) {
     `Contract: ${run.contract_hash}`, `Runner: ${run.contract.runner.backend} / ${run.runner_identity || 'not checked'}`,
     `Reserved worker invocations: ${run.attempts.length}/${run.contract.budget.max_attempts}`, `Active time: ${run.spent_ms} ms`,
     `Input tokens: ${totals.input_tokens}; cached subset: ${totals.cached_input_tokens}; output: ${totals.output_tokens}; reasoning subset: ${totals.reasoning_output_tokens}`,
-    `Worker authentication: ${run.auth?.authentication || 'not checked'}${run.auth?.authentication === 'api-key' ? ' (explicitly selected; usage is billed to the API account)' : ''}`,
+    `Worker: ${run.contract.worker || 'codex'}; authentication: ${run.auth?.authentication || 'not checked'}${run.auth?.authentication === 'api-key' ? ' (explicitly selected; usage is billed to the API account)' : ''}`,
     'Subscription allowance remaining: **unknown**. Token counters are not subscription allowance. A completed turn can overshoot the observed-token admission ceiling.',
     `Invocations without reported usage: ${run.attempts.filter(a => a.usage_unknown).length}`,
     `Usage accounting: ${JSON.stringify(accountingForRun(run.attempts))}`,

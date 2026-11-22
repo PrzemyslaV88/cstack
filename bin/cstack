@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+// On the PATH of Claude Code's Bash tool when this repository is installed as a plugin.
+await import(new URL('../src/cli.mjs', import.meta.url));

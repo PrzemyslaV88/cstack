@@ -4,7 +4,7 @@ description: Identify likely consumers and tests affected by a file or Git chang
 ---
 
 Resolve `scripts/impact.mjs` relative to this skill directory. This bundled helper
-needs Node 22.13+ and project files. It does not need Docker, Codex login, or a repair
+needs Node 22.13+ and project files. It does not need Docker, a model login, or a repair
 contract.
 
 Run `node "$HELPER" --repo "$REPO" --file relative/source.py` for a known file, or

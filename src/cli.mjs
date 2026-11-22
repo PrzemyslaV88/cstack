@@ -21,7 +21,7 @@ cstack verify --repo PATH --checks FILE [--base REV] [--dependencies node_module
 cstack verify --check RUN_ID [--repo PATH]
 cstack setup --repo PATH [--dependencies node_modules,.venv] [--scope DIR] [--adapter pytest|vitest|node-test]
 cstack profile show|validate --repo PATH [--profile FILE]
-cstack plan \"GOAL\" --repo PATH --profile FILE --acceptance FILE --out DIR
+cstack plan \"GOAL\" --repo PATH --profile FILE --acceptance FILE --out DIR [--worker codex|claude]
 cstack run --plan FILE --expect-plan SHA256 [--format markdown|json|jsonl]
 cstack review RUN_ID [--out DIR] [--format markdown|json]
 cstack impact --repo PATH (--file PATH | --since REV) [--depth 2] [--out DIR]
@@ -90,7 +90,7 @@ async function main() {
     console.log('Draft created: ' + resolve(flags.out) + '\nReview criteria, add observable probes, then set draft=false. Drafts cannot execute.'); return;
   }
   if (op === 'doctor') {
-    const {createRunner}=await import('./sandbox.mjs'); const {preflightCodex}=await import('./codex.mjs');
+    const {createRunner}=await import('./sandbox.mjs'); const {workers}=await import('./workers.mjs');
     const report = {controller_ready:true,worker_ready:false,project_verifier_ready:'not_checked', node: process.version, platform: process.platform, remaining_subscription_allowance: 'unknown' };
     const temp = await mkdtemp(join(tmpdir(), 'cstack-doctor-'));
     try {
@@ -100,10 +100,11 @@ async function main() {
         requireThat(health.code === 0 && health.stdout === 'cstack-isolated', health.stderr || 'Isolation probe failed');
         report.verification = { ready: true, backend: runner.backend, sandbox: runner.sandbox, identity: runner.identity, self_test: 'passed' };
       } catch (e) { report.verification = { ready: false, reason: e.message }; }
-      try { report.codex = { ready: true, ...(await preflightCodex()) }; } catch (e) { report.codex = { ready: false, reason: e.message }; }
-      report.worker_ready=report.codex.ready;
+      report.workers = {};
+      for (const [name, w] of Object.entries(workers)) { try { report.workers[name] = { ready: true, ...(await w.preflight()) }; } catch (e) { report.workers[name] = { ready: false, reason: e.message }; } }
+      report.codex = report.workers.codex; report.worker_ready = Object.values(report.workers).some(w => w.ready);
       if(flags.profile){const {readJson}=await import('./artifacts.mjs');const {checkEnvironment}=await import('./environment-plan.mjs');const {collectProjectTests}=await import('./setup.mjs');try{const p=await readJson(flags.profile);const {validateProfile}=await import('./project-profile.mjs');await validateProfile(p,await repository(flags.repo||'.'));const env=await checkEnvironment(p,{cwd:resolve(flags.repo||'.')});await collectProjectTests(p,env.runner,resolve(flags.repo||'.'));report.project_verifier_ready=true;}catch(e){report.project_verifier_ready=false;report.project_reason=e.message;}}
-      console.log(json(report)); if (!report.verification.ready || !report.codex.ready) process.exitCode = 2;
+      console.log(json(report)); if (!report.verification.ready || !report.worker_ready) process.exitCode = 2;
     } finally { await rm(temp, { recursive: true, force: true }); } return;
   }
   const {beginRun,loadRun,normalizeContract,effectiveStatus,writeReport,approveRun,exportCandidate,reviewDetails,outcomeOf}=await import('./core.mjs');

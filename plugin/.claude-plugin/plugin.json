@@ -1,0 +1,10 @@
+{
+  "name": "cstack",
+  "version": "0.6.0",
+  "description": "Verify any agent's change before it is called done, run sandbox-checked repairs with Claude Code or Codex workers, and map dependencies and change impact.",
+  "author": { "name": "cStack" },
+  "homepage": "https://github.com/PrzemyslaV88/cstack",
+  "repository": "https://github.com/PrzemyslaV88/cstack",
+  "license": "MIT",
+  "keywords": ["verification", "agents", "testing", "sandbox", "code-review"]
+}

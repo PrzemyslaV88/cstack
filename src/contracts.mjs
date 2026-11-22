@@ -16,7 +16,7 @@ function paths(value, name) {
 export function normalizeContract(raw) {
   requireThat(raw && typeof raw === 'object' && !Array.isArray(raw), 'Contract must be an object');
   const v3 = raw.schema_version === 3;
-  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'approved_test_fixtures', 'runner', 'budget', 'model', 'reasoning', ...(v3 ? ['project', 'source_mode', 'context', 'test_change_policy'] : [])]);
+  const allowed = new Set(['draft', 'schema_version', 'goal', 'type', 'policy', 'attempt_limit', 'criteria', 'tasks', 'implementation_paths', 'workspace_inputs', 'approved_test_fixtures', 'runner', 'budget', 'model', 'reasoning', ...(v3 ? ['project', 'source_mode', 'context', 'test_change_policy', 'worker'] : [])]);
   for (const key of Object.keys(raw)) requireThat(allowed.has(key), `Unknown contract property: ${key}`);
   requireThat(raw.schema_version === undefined || [2,3].includes(raw.schema_version), 'Use schema_version 2 or 3; v1 evidence cannot be promoted');
   if (v3) {
@@ -25,6 +25,7 @@ export function normalizeContract(raw) {
     requireThat(raw.model === undefined || typeof raw.model === 'string' && /^[A-Za-z0-9._/-]{1,128}$/.test(raw.model), 'Invalid model');
     requireThat(raw.source_mode === undefined || ['clean','working-copy'].includes(raw.source_mode), 'Invalid source mode');
     requireThat(raw.test_change_policy === undefined || ['review','additive'].includes(raw.test_change_policy), 'test_change_policy must be review or additive');
+    requireThat(raw.worker === undefined || ['codex','claude'].includes(raw.worker), 'worker must be codex or claude');
   }
   requireThat(!raw.draft, 'Review the draft contract and set draft=false before execution');
   requireThat(raw.reasoning === undefined || ['low', 'medium', 'high'].includes(raw.reasoning), 'Unknown reasoning effort');
@@ -157,7 +158,7 @@ export function normalizeContract(raw) {
       worker_timeout_ms: integer(b.worker_timeout_ms, 600_000, 100, 3_600_000, 'worker_timeout_ms'),
       max_observed_tokens: integer(b.max_observed_tokens, 500_000, 1, 100_000_000, 'max_observed_tokens') },
     ...(raw.model ? { model: String(raw.model) } : {}), reasoning: ['low', 'medium', 'high'].includes(raw.reasoning) ? raw.reasoning : 'medium',
-    ...(v3 ? { source_mode: raw.source_mode || 'clean', test_change_policy: raw.test_change_policy || 'additive', context: normalizeContext(raw.context), ...(raw.project ? {project: normalizeProject(raw.project)} : {}) } : {}) };
+    ...(v3 ? { source_mode: raw.source_mode || 'clean', test_change_policy: raw.test_change_policy || 'additive', worker: raw.worker || 'codex', context: normalizeContext(raw.context), ...(raw.project ? {project: normalizeProject(raw.project)} : {}) } : {}) };
 }
 function normalizeProject(value) {
   exactKeys(value, ['profile_digest','environment_digest'], 'project');
