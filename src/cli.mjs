@@ -17,6 +17,8 @@ const help = `cStack ${version} — single-worker repairs and read-only project 
 
 cstack map --repo /project [--focus relative/file.py] [--max-files 2000] [--format json|markdown] [--out /new/report]
 cstack analyze-stack --repo /project [--trace /error.log] [--max-files 2000] [--format json|markdown] [--out /new/report]
+cstack verify --repo PATH --checks FILE [--base REV] [--dependencies node_modules,.venv] [--format json]
+cstack verify --check RUN_ID [--repo PATH]
 cstack setup --repo PATH [--dependencies node_modules,.venv] [--scope DIR] [--adapter pytest|vitest|node-test]
 cstack profile show|validate --repo PATH [--profile FILE]
 cstack plan \"GOAL\" --repo PATH --profile FILE --acceptance FILE --out DIR
@@ -43,6 +45,7 @@ Verification uses the project's own installed dependencies inside an OS sandbox
 (Linux namespaces or macOS Seatbelt): offline, read-only candidate, self-tested.
 No images, no installs, no unsandboxed fallback. ChatGPT Codex auth by default;
 CSTACK_CODEX_AUTH=api-key explicitly selects Codex's stored API-key login (billed). Windows: use WSL2.
+verify checks a change already in the working copy without a model: exit 0 done, 2 failed, 3 needs you.
 Contracts are frozen. Resume never increases budgets. No automatic push/deployment.
 `;
 const commandFlags = {map:['repo','focus','max-files','format','out'], 'analyze-stack':['repo','trace','max-files','format','out'], doctor:['profile','repo'], init:['out'], validate:['contract'], run:['repo','contract','plan','expect-plan','format'], status:['watch','format'], resume:[], evidence:['criterion'], approve:['criterion','snapshot','note'], report:[], export:['out'], 'input-digest':[], help:[], '--help':[],...upgradeFlags};

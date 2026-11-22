@@ -65,4 +65,5 @@ blocked except exact previously reviewed and frozen test fixtures.
 
 Legacy explicit contracts still use `validate`, `run --repo --contract`, and
 `export`. Export copies the verified candidate into a new directory. For read-only
-analysis use this plugin's graph-map, stack-analysis or impact-analysis skill.
+analysis use this plugin's graph-map, stack-analysis or impact-analysis skill. To
+check a change that another workflow already made, use the verify skill.

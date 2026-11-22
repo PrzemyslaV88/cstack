@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "cStack",
     "shortDescription": "Code maps, stack analysis and checked fixes",
-    "longDescription": "Map Python, JavaScript and TypeScript file imports; identify technology stack declarations with file evidence; inspect Python/Node error frames; and run one controlled Codex repair worker with independent sandboxed checks against the project's own installed dependencies and explicit review gates.",
+    "longDescription": "Map Python, JavaScript and TypeScript file imports; identify technology stack declarations with file evidence; inspect Python/Node error frames; verify a change made by any agent or workflow before it is called done; and run one controlled Codex repair worker with independent sandboxed checks against the project's own installed dependencies and explicit review gates.",
     "developerName": "cStack",
     "category": "Developer Tools",
     "capabilities": [

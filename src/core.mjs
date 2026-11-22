@@ -33,21 +33,30 @@ export function outcomeOf(status) {
 export const runtimePaths = paths => paths.filter(p => !testPath(p) && !/(^|\/)(docs?|\.github)(\/|$)|(^|\/)README[^/]*$/.test(p));
 export const tampering = paths => paths.filter(p => testPath(p) || configPath(p));
 
-export async function beginRun({ repo, contract, home = dataHome() }) {
+// `verify` mode checks a change that already exists in the working copy: the private worktree
+// starts at the committed base revision (the baseline) and the working copy is imported later as
+// the run's single attempt. Nothing in the user's repository is modified.
+export async function beginRun({ repo, contract, home = dataHome(), verify = null }) {
   requireThat(process.platform !== 'win32', 'Use WSL2 for Windows; native Windows execution is not supported', 'CAPABILITY');
   const request_recorded_at=new Date().toISOString();home = resolve(home);
-  const c = normalizeContract(contract), info = await inspectRepo(repo, c), id = randomUUID();
+  const c = normalizeContract(contract), id = randomUUID();
+  const info = await inspectRepo(repo, verify ? { source_mode: 'verify' } : c);
+  if (verify) {
+    requireThat(typeof verify.base === 'string' && /^[^-\s][^\s]{0,255}$/.test(verify.base), 'Invalid base revision', 'INVALID');
+    info.base = await git(info.root, 'rev-parse', '--verify', '--quiet', verify.base + '^{commit}').catch(() => { throw new CstackError('Unknown base revision: ' + verify.base, 'INVALID'); });
+  }
   // One environment: the worker and the verifier share the project's installed dependencies.
   const environment = { links: await resolveDependencies(info.root, c.runner.dependencies) };
   let origin = await captureOrigin(info.root, c);
-  requireThat(origin.head===info.base, 'Source HEAD changed during capture', 'SOURCE_CHANGED_DURING_CAPTURE');
+  if (!verify) requireThat(origin.head===info.base, 'Source HEAD changed during capture', 'SOURCE_CHANGED_DURING_CAPTURE');
   await mkdir(home, { recursive: true, mode: 0o700 }); home = await realpath(home);
   const rel = relative(info.root, home);
   requireThat(rel.startsWith('..') || rel.startsWith('/'), 'Controller home must be outside the worker repository', 'ISOLATION');
   const worktree = await createWorktree(info.root, info.base, id, home);
   let registered = false;
   try {
-  origin = await overlayOrigin(worktree, origin, c);
+  origin = verify ? { source_mode: 'verify', root: info.root, root_id: origin.root_id, head: info.base, ref: origin.ref, entries: [], index_entries: [], index_digest: null, inventory_digest: null, deleted_paths: [] }
+    : await overlayOrigin(worktree, origin, c);
   await linkEnvironment(worktree, environment.links);
   await manifest(worktree, c); // Approved fixtures must already exist, with exact reviewed bytes.
   for (const input of c.workspace_inputs) {
@@ -70,6 +79,9 @@ export async function beginRun({ repo, contract, home = dataHome() }) {
   requireThat(!run.initial_snapshot.entries.some(e => /(^|\/)\.codex\/(config\.toml|hooks\.json)$/.test(e.path)),
     'Project Codex configuration/hooks need a separately reviewed policy; refusing implicit configuration loading', 'CAPABILITY');
   run.oracle_paths = c.criteria.filter(x => x.kind === 'node-test').flatMap(x => x.argv.filter(a => !a.startsWith('-') && run.initial_snapshot.entries.some(e => e.path === a.replace(/^\.\//, ''))).map(a => a.replace(/^\.\//, '')));
+  // A checks file committed in the repository is itself an acceptance oracle: editing it needs review.
+  for (const path of verify?.oracle_paths || []) if (run.initial_snapshot.entries.some(e => e.path === path) && !run.oracle_paths.includes(path)) run.oracle_paths.push(path);
+  if (verify) run.verify = { base: info.base, requested_base: verify.base, checks: verify.checks || null, imported: null };
   run.protected_paths = run.initial_snapshot.entries.filter(e => testPath(e.path) || configPath(e.path)).map(e => e.path);
   createRecord(run, home); registered = true; commitRun(run, 'created', { base: run.base }, home); await exportState(run, home); return run;
   } catch (error) {
@@ -123,6 +135,7 @@ function deliveryDecision(run) {
   if (automatedPass && implementation.length && missingManual.length) return ['NEEDS_MANUAL_VERIFICATION', 'Human acceptance required: ' + missingManual.map(c => c.id).join(', ')];
   if (!required.every(c => run.results[c.id]?.status === 'PASS')) return null;
   if (run.contract.type === 'INVESTIGATE') return ['INVESTIGATED', 'Requested investigation criteria satisfied; no implementation claim'];
+  if (!implementation.length && !run.attempts.length && run.contract.type === 'REFACTOR') return null; // Preservation checks pass on the base by design.
   if (!implementation.length) return run.attempts.length ? ['STALLED', 'Checks passed but the requested implementation has not been delivered'] : ['ALREADY_SATISFIED', 'Configured checks already pass. No defect reproduction or implementation fix was demonstrated.'];
   if (reviewPaths.length && !approved(run, 'change-review')) return ['NEEDS_MANUAL_VERIFICATION', 'Review protected/test/configuration changes: ' + reviewPaths.join(', ')];
   if (!required.some(c => ['probe', 'manual'].includes(c.kind)) && !approved(run, 'outcome')) {
@@ -220,7 +233,8 @@ export async function processRun(input, { home = dataHome(), worker = codexWorke
       if (remaining() <= 0) { stop('BUDGET_EXHAUSTED', 'Active-runtime ceiling reached'); break; }
       const decision = deliveryDecision(run);
       if (decision) { stop(...decision); break; }
-      const task = taskReady(run);
+      // A refactor's preservation checks already pass, so no task has unmet outcomes before its first attempt.
+      const task = taskReady(run) || (run.contract.type === 'REFACTOR' && !run.attempts.length ? run.contract.tasks[0] : null);
       if (!task) { stop('BLOCKED', 'No dependency-ready task has unmet outcomes'); break; }
       if (run.contract.criteria.filter(c => c.required && task.criteria.includes(c.id)).every(c => c.kind === 'manual') && run.attempts.some(a => a.task_id === task.id)) {
         stop('NEEDS_MANUAL_VERIFICATION', 'Required manual acceptance is pending'); break;

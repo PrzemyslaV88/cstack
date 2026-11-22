@@ -1,7 +1,7 @@
 # cStack for Codex
 
 cStack 0.6.0 is packaged as a local Codex plugin. It includes the controller runtime
-and four skills. Repairs use the existing ChatGPT Codex sign-in, Git and the project's
+and five skills. Repairs use the existing ChatGPT Codex sign-in, Git and the project's
 own installed dependencies inside an OS sandbox (no Docker);
 there is no separate service or automatic API-key billing fallback.
 
@@ -155,8 +155,8 @@ install an upgrade into your normal profile; installation remains an explicit ac
 
 ## Version 0.5 upgrade
 
-The bundle exposes four skills: `cstack:cstack`, `cstack:graph-map`,
-`cstack:stack-analysis`, and `cstack:impact-analysis`. Repair helpers include setup,
+The bundle exposes five skills: `cstack:cstack`, `cstack:graph-map`,
+`cstack:stack-analysis`, `cstack:impact-analysis` and `cstack:verify` ([verify a change](VERIFY.md)). Repair helpers include setup,
 profiles, frozen plans, progress, private HTML review and journaled apply/recovery.
 Working-copy mode is explicit and preserves existing staging; clean remains default.
 

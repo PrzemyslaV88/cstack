@@ -74,9 +74,15 @@ $cstack:impact-analysis Show likely consumers and tests affected by src/engine.p
 $cstack:cstack Fix this bug and independently check that the fix works.
 ```
 
+```text
+$cstack:verify Check my change against .cstack/checks.json before I call it done.
+```
+
+Already using another agent workflow such as pstack? `cstack verify` gates a change that is already in your working copy, with no model and no repository changes. [Verify a change →](docs/VERIFY.md)
+
 Analysis works on current files, including dirty projects. Repairs use a clean Git baseline by default; explicit working-copy mode captures existing edits and preserves staging. Coding requires a supported authenticated Codex CLI and an available isolated verifier. [Installation and setup →](docs/CODEX_PLUGIN.md)
 
-## Four skills, one plugin
+## Five skills, one plugin
 
 | Skill | What you get | Useful when… |
 |---|---|---|
@@ -84,6 +90,7 @@ Analysis works on current files, including dirty projects. Repairs use a clean G
 | **Stack analysis** | Scoped application/test/example/benchmark inventories; language, framework and tool declarations; entrypoints and error-frame locations with file evidence. | You are onboarding to a project or investigating a Python/Node error trace. |
 | **Impact analysis** | Direct dependencies, downstream consumers, candidate tests, import cycles, and labelled historical edges for deleted files; Markdown, JSON and Mermaid exports. | You want to see which parts of a project may be affected by a file or Git change. |
 | **Checked repair** | Project setup and frozen plans; one coding worker; independent checks; progress, usage and private review reports; patch preview and recoverable delivery. | You want a focused fix with an inspectable completion record. |
+| **Verify** | A model-free `done` / `failed` / `needs_you` verdict for an existing change: checks fail on the base and pass on the change, frozen checks, sandboxed, evidence bound to the exact tree; `--check` before commit or merge. | Another agent or workflow (pstack, Claude Code, Cursor) made the change and you need proof before calling it done. |
 
 **Error locations, too.** Supply a Python or Node.js error trace to stack analysis to match its frames back to project files. Reported locations guide investigation; they do not prove the root cause.
 
@@ -208,6 +215,7 @@ Tests cover false completion, isolation, changed evidence, crash/retry/resume be
 |---|---|
 | [Codex plugin guide](docs/CODEX_PLUGIN.md) | Installation, skill discovery, requirements and installed-package validation. |
 | [Graph mapping and stack analysis](docs/PROJECT_ANALYSIS.md) | Supported formats, error frames, exports, evidence and scan limits. |
+| [Verify a change](docs/VERIFY.md) | The `verify` gate, checks files, outcomes, pstack integration, hooks and CI. |
 | [Completion contracts](docs/CONTRACT.md) | Observable checks, review steps and the frozen repair objective. |
 | [cStack versus pstack](docs/benchmarks/2026-11-02-cstack-vs-pstack.json) | Current comparison figures, mode-specific advantages, methodology and source identities. |
 | [Project setup](docs/SETUP.md) | Private profiles, installed dependency folders, baseline reproduction and supported test adapters. |
